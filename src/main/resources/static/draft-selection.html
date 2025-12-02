@@ -1,0 +1,1502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match Draft Selection - Playvora</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-top: 15px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status-connected {
+            background: #10b981;
+            color: white;
+        }
+
+        .status-disconnected {
+            background: #ef4444;
+            color: white;
+        }
+
+        .status-draft {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .current-picker {
+            background: #f59e0b;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+        }
+
+        .available-players {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+
+        .available-players h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .player-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .player-card {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .player-card:hover {
+            border-color: #3b82f6;
+            transform: translateX(5px);
+        }
+
+        .player-card.selected {
+            background: #dbeafe;
+            border-color: #3b82f6;
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .player-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .player-details h3 {
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .player-details p {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .select-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .select-btn:hover:not(:disabled) {
+            background: #2563eb;
+            transform: scale(1.05);
+        }
+
+        .select-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .teams-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .teams-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .teams-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .team-card {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .team-card.current-turn {
+            border-color: #f59e0b;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+            animation: glow 2s infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2); }
+            50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.3); }
+        }
+
+        .team-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .team-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .team-color {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid #e5e7eb;
+        }
+
+        .team-captain {
+            color: #6b7280;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .team-players {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .team-player {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .team-player-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .team-player-name {
+            flex: 1;
+            color: #333;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .captain-badge {
+            background: #f59e0b;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .empty-team {
+            text-align: center;
+            padding: 20px;
+            color: #9ca3af;
+            font-style: italic;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 8px;
+            padding: 15px 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+            max-width: 400px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification.success {
+            border-left: 4px solid #10b981;
+        }
+
+        .notification.error {
+            border-left: 4px solid #ef4444;
+        }
+
+        .notification.info {
+            border-left: 4px solid #3b82f6;
+        }
+
+        .connection-setup {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            margin: 100px auto;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .connection-setup h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="connectionSetup" class="connection-setup">
+        <h2>Connect to Match Draft</h2>
+        <div class="form-group">
+            <label for="wsUrl">WebSocket URL:</label>
+            <input type="text" id="wsUrl" value="http://localhost:8080/ws" placeholder="ws://localhost:8080/ws">
+        </div>
+        <div class="form-group">
+            <label for="matchId">Match ID:</label>
+            <input type="number" id="matchId" placeholder="Enter Match ID" required>
+        </div>
+        <div class="form-group">
+            <label for="jwtToken">JWT Token (optional, for authenticated operations):</label>
+            <input type="text" id="jwtToken" placeholder="Enter JWT token (optional)">
+            <small style="color: #6b7280; font-size: 12px; margin-top: 5px; display: block;">
+                If provided, User ID and Team ID will be auto-detected. Required for selecting players.
+            </small>
+        </div>
+        <div class="form-group">
+            <label for="userId">Your User ID (optional if JWT provided):</label>
+            <input type="number" id="userId" placeholder="Enter Your User ID (auto-detected if JWT provided)">
+            <small style="color: #6b7280; font-size: 12px; margin-top: 5px; display: block;">
+                Will be auto-detected from JWT token if provided. Otherwise, enter manually.
+            </small>
+        </div>
+        <div class="form-group">
+            <label for="teamId">Your Team ID (optional, auto-detected if JWT provided):</label>
+            <input type="number" id="teamId" placeholder="Enter Team ID (auto-detected if JWT provided)">
+            <small style="color: #6b7280; font-size: 12px; margin-top: 5px; display: block;">
+                Will be auto-detected from match data if JWT token is provided. Otherwise, enter manually.
+            </small>
+        </div>
+        <button class="btn-primary" onclick="connect()">Connect</button>
+    </div>
+
+    <div id="mainContent" class="container" style="display: none;">
+        <div class="header">
+            <h1 id="matchTitle">Match Draft Selection</h1>
+            <div class="status-bar">
+                <div class="status-item">
+                    <span class="status-badge" id="connectionStatus">Disconnected</span>
+                </div>
+                <div class="status-item" id="draftStatusContainer" style="display: none;">
+                    <span class="status-badge status-draft" id="draftStatus">Draft In Progress</span>
+                </div>
+                <div class="status-item" id="currentPickerContainer" style="display: none;">
+                    <span class="current-picker" id="currentPicker">Waiting for pick...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="available-players">
+                <h2>Available Players (<span id="availableCount">0</span>)</h2>
+                <div id="playerList" class="player-list">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading available players...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="teams-section">
+                <h2>Teams</h2>
+                <div id="teamsGrid" class="teams-grid">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading teams...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SockJS and STOMP libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+    <script>
+        let stompClient = null;
+        let matchId = null;
+        let userId = null;
+        let teamId = null;
+        let jwtToken = null;
+        let currentMatchData = null;
+        let isCaptain = false;
+
+        function connect() {
+            const wsUrl = document.getElementById('wsUrl').value;
+            const matchIdInput = document.getElementById('matchId').value;
+            const userIdInput = document.getElementById('userId').value;
+            const teamIdInput = document.getElementById('teamId').value;
+            const jwtTokenInput = document.getElementById('jwtToken').value;
+
+            if (!matchIdInput) {
+                showNotification('Please enter Match ID', 'error');
+                return;
+            }
+
+            matchId = parseInt(matchIdInput);
+            jwtToken = jwtTokenInput ? jwtTokenInput.trim() : null;
+            
+            // Only use manual userId/teamId if JWT token is not provided
+            // If JWT is provided, we'll auto-detect from API
+            if (!jwtToken) {
+                userId = userIdInput ? parseInt(userIdInput) : null;
+                teamId = teamIdInput ? parseInt(teamIdInput) : null;
+                console.log('Using manual userId and teamId (no JWT):', { userId, teamId });
+            } else {
+                // JWT provided - userId and teamId will be auto-detected
+                // But still allow manual override if provided
+                userId = userIdInput ? parseInt(userIdInput) : null;
+                teamId = teamIdInput ? parseInt(teamIdInput) : null;
+                console.log('JWT provided - will auto-detect userId and teamId. Manual values:', { userId, teamId });
+            }
+
+            // Hide connection setup, show main content
+            document.getElementById('connectionSetup').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+
+            // Build WebSocket URL with token as query parameter if provided
+            let finalWsUrl = wsUrl;
+            if (jwtToken) {
+                // Append token as query parameter
+                const separator = wsUrl.includes('?') ? '&' : '?';
+                finalWsUrl = wsUrl + separator + 'token=' + encodeURIComponent(jwtToken);
+                console.log('WebSocket URL with token query parameter:', finalWsUrl);
+            } else {
+                console.log('WebSocket URL without token (unauthenticated):', finalWsUrl);
+            }
+
+            // Create SockJS connection with token in query parameter
+            const socket = new SockJS(finalWsUrl);
+            stompClient = Stomp.over(socket);
+
+            // Enable debug logging to see STOMP messages
+            stompClient.debug = function(str) {
+                console.log('STOMP Debug:', str);
+            };
+            
+            // Also log connection lifecycle
+            console.log('STOMP client created, connecting...');
+
+            // Connect to WebSocket (no headers needed, token is in query params)
+            // Prepare connection headers
+            const connectHeaders = {};
+            if (jwtToken) {
+                connectHeaders['Authorization'] = `Bearer ${jwtToken}`;
+                console.log('Adding JWT token to WebSocket connection headers');
+            }
+            
+            console.log('=== Connecting to WebSocket ===');
+            console.log('WebSocket URL:', wsUrl);
+            console.log('Match ID:', matchId);
+            console.log('Has JWT token:', !!jwtToken);
+            console.log('Connection headers:', Object.keys(connectHeaders));
+            
+            stompClient.connect(
+                connectHeaders,
+                function(frame) {
+                    console.log('=== WebSocket Connected ===');
+                    console.log('Frame:', frame);
+                    console.log('STOMP client connected:', stompClient.connected);
+                    updateConnectionStatus(true);
+                    
+                    // Wait a bit to ensure connection is fully established
+                    setTimeout(() => {
+                        console.log('=== Setting up subscriptions ===');
+                        
+                        // Subscribe to match updates FIRST
+                        subscribeToMatchUpdates();
+                        
+                        // Subscribe to user-specific notifications (only if authenticated)
+                        if (userId && jwtToken) {
+                            subscribeToUserNotifications();
+                            subscribeToErrors();
+                        }
+                        
+                        // Fetch current user info if JWT token is provided
+                        if (jwtToken) {
+                            fetchCurrentUser();
+                        }
+                        
+                        // Fetch initial match data AFTER subscription is set up
+                        fetchInitialMatchData();
+                        
+                        console.log('=== All subscriptions set up ===');
+                        console.log('Subscription active:', window.matchUpdatesSubscription ? 'Yes' : 'No');
+                        console.log('Subscription object:', window.matchUpdatesSubscription);
+                        
+                        // Verify subscription is working by checking if it's still active
+                        if (window.matchUpdatesSubscription) {
+                            console.log('✓ Subscription verified - ready to receive messages');
+                            console.log('Subscription destination:', `/topic/match/${matchId}/updates`);
+                        } else {
+                            console.error('✗ Subscription verification failed - subscription object is null');
+                        }
+                    }, 200); // Increased delay to ensure subscription is fully established
+                },
+                function(error) {
+                    console.error('=== WebSocket Connection Error ===');
+                    console.error('Error:', error);
+                    console.error('Error details:', JSON.stringify(error, null, 2));
+                    updateConnectionStatus(false);
+                    showNotification('Connection failed. Please check your WebSocket URL and authentication.', 'error');
+                }
+            )();
+            
+            // Also set up error handler
+            stompClient.onerror = function(error) {
+                console.error('=== STOMP Error ===');
+                console.error('Error:', error);
+            };
+            
+            // Set up disconnect handler
+            stompClient.onclose = function() {
+                console.warn('=== WebSocket Disconnected ===');
+                updateConnectionStatus(false);
+            };
+        }
+
+        function fetchCurrentUser() {
+            // Fetch current user info from API
+            const apiUrl = '/api/v1/users/me';
+            console.log('Fetching current user from:', apiUrl);
+            
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            // Add JWT token
+            if (jwtToken) {
+                headers['Authorization'] = `Bearer ${jwtToken}`;
+            }
+            
+            fetch(apiUrl, {
+                method: 'GET',
+                headers: headers
+            })
+            .then(response => {
+                console.log('Fetch user response status:', response.status);
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Authentication failed');
+                    } else {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Current user data:', data);
+                if (data && data.success && data.data) {
+                    const currentUser = data.data;
+                    // Auto-populate userId if not already set or if it differs
+                    const apiUserId = currentUser.id ? Number(currentUser.id) : null;
+                    if (apiUserId) {
+                        // Always update userId from API to ensure accuracy
+                        const previousUserId = userId;
+                        userId = apiUserId;
+                        console.log('Auto-populated userId from API:', userId, '(previous:', previousUserId, ')');
+                        
+                        // Show notification only if userId changed or was not set
+                        if (!previousUserId || Number(previousUserId) !== apiUserId) {
+                            const userName = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || currentUser.email || 'User';
+                            showNotification(`Logged in as: ${userName} (ID: ${userId})`, 'success');
+                        }
+                        
+                        // Auto-detect teamId from match data if available
+                        // Wait a bit for match data to load if not available yet
+                        if (currentMatchData?.teams) {
+                            autoDetectTeamId(currentMatchData.teams, apiUserId);
+                        } else {
+                            // If match data is not loaded yet, try again after a short delay
+                            setTimeout(() => {
+                                if (currentMatchData?.teams) {
+                                    autoDetectTeamId(currentMatchData.teams, apiUserId);
+                                }
+                            }, 500);
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching current user:', error);
+                if (error.message === 'Authentication failed') {
+                    showNotification('Authentication failed. Please check your JWT token.', 'error');
+                } else {
+                    console.log('Could not fetch current user. Using provided user ID.');
+                }
+            });
+        }
+
+        function autoDetectTeamId(teams, detectedUserId) {
+            console.log('Auto-detecting teamId for userId:', detectedUserId, 'teams:', teams);
+            
+            if (!teams || !detectedUserId) {
+                return;
+            }
+            
+            // Normalize userId to number for comparison
+            const normalizedUserId = Number(detectedUserId);
+            
+            // Find which team the user belongs to
+            for (const team of teams) {
+                const captainId = team.captain?.id ? Number(team.captain.id) : null;
+                if (team.captain && captainId === normalizedUserId) {
+                    // User is the captain of this team
+                    const normalizedTeamId = Number(team.id);
+                    const currentTeamId = teamId ? Number(teamId) : null;
+                    if (!teamId || currentTeamId !== normalizedTeamId) {
+                        teamId = normalizedTeamId;
+                        console.log('Auto-detected teamId (as captain):', teamId);
+                        showNotification(`Auto-detected team: ${team.name || 'Team'} (ID: ${teamId})`, 'success');
+                        // Re-check captain status
+                        checkIfCaptain(teams);
+                        // Update button states
+                        updatePlayerButtonStates();
+                    }
+                    return;
+                }
+                
+                // Check if user is a player in this team
+                if (team.players && Array.isArray(team.players)) {
+                    for (const player of team.players) {
+                        const playerUserId = player.user?.id ? Number(player.user.id) : null;
+                        if (player.user && playerUserId === normalizedUserId) {
+                            // User is a player in this team
+                            const normalizedTeamId = Number(team.id);
+                            if (!teamId || Number(teamId) !== normalizedTeamId) {
+                                teamId = normalizedTeamId;
+                                console.log('Auto-detected teamId (as player):', teamId);
+                                showNotification(`Auto-detected team: ${team.name} (ID: ${teamId})`, 'info');
+                                // Re-check captain status
+                                checkIfCaptain(teams);
+                                // Update button states
+                                updatePlayerButtonStates();
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+            
+            console.log('Could not auto-detect teamId for userId:', normalizedUserId);
+        }
+
+        function fetchInitialMatchData() {
+            // Fetch initial match data from REST API
+            const apiUrl = `/api/v1/match-events/${matchId}`;
+            console.log('Fetching initial match data from:', apiUrl);
+            
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            // Add JWT token if available
+            if (jwtToken) {
+                headers['Authorization'] = `Bearer ${jwtToken}`;
+            }
+            
+            fetch(apiUrl, {
+                method: 'GET',
+                headers: headers
+            })
+            .then(response => {
+                console.log('Fetch response status:', response.status);
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Authentication required');
+                    } else if (response.status === 404) {
+                        throw new Error('Match not found');
+                    } else {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Fetched match data response:', data);
+                console.log('Response structure:', {
+                    hasSuccess: !!data?.success,
+                    hasData: !!data?.data,
+                    dataType: typeof data?.data,
+                    teams: data?.data?.teams?.length || 0,
+                    availablePlayers: data?.data?.availablePlayersList?.length || 0
+                });
+                
+                if (data && data.success && data.data) {
+                    console.log('Initial match data loaded:', data.data);
+                    console.log('Teams:', data.data.teams);
+                    console.log('Available players:', data.data.availablePlayersList);
+                    currentMatchData = data.data;
+                    updateMatchUI(data.data);
+                    
+                    // Auto-detect teamId if userId is available
+                    if (userId && data.data.teams) {
+                        autoDetectTeamId(data.data.teams, userId);
+                    } else if (jwtToken && !userId) {
+                        // If JWT token is provided but userId is not set yet, wait for user fetch
+                        console.log('Waiting for user info to be fetched before auto-detecting team...');
+                    }
+                    
+                    showNotification('Match data loaded successfully', 'success');
+                } else if (data && data.data) {
+                    // Handle case where data is directly in response
+                    console.log('Match data found (direct):', data.data);
+                    currentMatchData = data.data;
+                    updateMatchUI(data.data);
+                    
+                    // Auto-detect teamId if userId is available
+                    if (userId && data.data.teams) {
+                        autoDetectTeamId(data.data.teams, userId);
+                    } else if (jwtToken && !userId) {
+                        // If JWT token is provided but userId is not set yet, wait for user fetch
+                        console.log('Waiting for user info to be fetched before auto-detecting team...');
+                    }
+                } else {
+                    console.warn('Unexpected data format. Full response:', JSON.stringify(data, null, 2));
+                    showNotification('Match data format unexpected. Waiting for WebSocket updates...', 'info');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching initial match data:', error);
+                if (error.message === 'Authentication required') {
+                    showNotification('Authentication may be required. Updates will appear via WebSocket when available.', 'info');
+                } else if (error.message === 'Match not found') {
+                    showNotification('Match not found. Please check the Match ID.', 'error');
+                } else {
+                    showNotification('Could not load initial match data. Updates will appear via WebSocket when available.', 'info');
+                }
+            });
+        }
+
+        function subscribeToMatchUpdates() {
+            const destination = `/topic/match/${matchId}/updates`;
+            console.log('=== Subscribing to match updates ===');
+            console.log('Destination:', destination);
+            console.log('STOMP client:', stompClient);
+            console.log('STOMP client connected:', stompClient?.connected);
+            console.log('Match ID:', matchId);
+            
+            if (!stompClient) {
+                console.error('✗ STOMP client is null! Cannot subscribe.');
+                showNotification('WebSocket client not initialized', 'error');
+                return null;
+            }
+            
+            if (!stompClient.connected) {
+                console.error('✗ STOMP client is not connected! Cannot subscribe.');
+                console.error('Connection status:', stompClient.connected);
+                showNotification('WebSocket not connected. Please refresh the page.', 'error');
+                return null;
+            }
+            
+            try {
+                console.log('Creating subscription to:', destination);
+                const subscription = stompClient.subscribe(destination, function(message) {
+                    try {
+                        console.log('=== ✅ WebSocket message received ===');
+                        console.log('Timestamp:', new Date().toISOString());
+                        console.log('Raw message:', message);
+                        console.log('Message body type:', typeof message.body);
+                        console.log('Message body length:', message.body ? message.body.length : 0);
+                        console.log('Message body:', message.body);
+                        
+                        if (!message || !message.body) {
+                            console.error('✗ Invalid message: missing body');
+                            console.error('Message object:', message);
+                            return;
+                        }
+                        
+                        const data = JSON.parse(message.body);
+                        console.log('✓ Parsed WebSocket message:', data);
+                        console.log('Message type:', data.type);
+                        console.log('Message data:', data.data);
+                        
+                        // Log the full message structure
+                        console.log('Full message structure:', JSON.stringify(data, null, 2));
+                        
+                        // Verify subscription is working
+                        console.log('✓ Subscription callback executed successfully');
+                        
+                        // Show visual notification that message was received
+                        showNotification('Match update received!', 'success');
+                        
+                        handleMatchUpdate(data);
+                    } catch (error) {
+                        console.error('=== ✗ Error parsing WebSocket message ===');
+                        console.error('Error:', error);
+                        console.error('Error message:', error.message);
+                        console.error('Error stack:', error.stack);
+                        console.error('Message body:', message.body);
+                        showNotification('Error processing WebSocket message: ' + error.message, 'error');
+                    }
+                });
+                
+                console.log('✓ Successfully subscribed to match updates');
+                console.log('Subscription object:', subscription);
+                console.log('Subscription ID:', subscription?.id);
+                
+                // Store subscription for potential cleanup
+                window.matchUpdatesSubscription = subscription;
+                
+                // Verify subscription is active
+                if (subscription) {
+                    console.log('✓ Subscription is active and ready to receive messages');
+                } else {
+                    console.error('✗ Subscription object is null!');
+                }
+                
+                return subscription;
+            } catch (error) {
+                console.error('=== ✗ Error creating subscription ===');
+                console.error('Error:', error);
+                console.error('Error message:', error.message);
+                console.error('Error stack:', error.stack);
+                showNotification('Error subscribing to match updates: ' + error.message, 'error');
+                return null;
+            }
+        }
+
+        function subscribeToUserNotifications() {
+            const destination = `/user/${userId}/queue/notifications`;
+            
+            stompClient.subscribe(destination, function(message) {
+                const data = JSON.parse(message.body);
+                if (data.type === 'selection_confirmed') {
+                    showNotification('Player selected successfully!', 'success');
+                }
+            });
+        }
+
+        function subscribeToErrors() {
+            const destination = `/user/${userId}/queue/errors`;
+            
+            stompClient.subscribe(destination, function(message) {
+                const data = JSON.parse(message.body);
+                showNotification(data.message || 'An error occurred', 'error');
+            });
+        }
+
+        function handleMatchUpdate(wsMessage) {
+            console.log('=== handleMatchUpdate called ===');
+            console.log('Full wsMessage:', wsMessage);
+            console.log('Message type:', wsMessage.type);
+            console.log('Message data:', wsMessage.data);
+            console.log('Message data type:', typeof wsMessage.data);
+            console.log('Message data keys:', wsMessage.data ? Object.keys(wsMessage.data) : 'null');
+            
+            // Handle different message types
+            if (wsMessage.type === 'team_selection' || wsMessage.type === 'match_update') {
+                let matchData = null;
+                
+                // Try to extract match data from different possible structures
+                if (wsMessage.data) {
+                    console.log('wsMessage.data exists');
+                    console.log('wsMessage.data.data exists?', !!wsMessage.data.data);
+                    console.log('wsMessage.data.data:', wsMessage.data.data);
+                    
+                    // Structure: WebSocketMessage { type: "team_selection", data: TeamSelectionMessage { data: MatchEventResponse } }
+                    if (wsMessage.data.data) {
+                        matchData = wsMessage.data.data;
+                        console.log('✓ Extracted match data from wsMessage.data.data');
+                        console.log('Match data:', matchData);
+                        console.log('Match data has teams?', !!matchData.teams);
+                        console.log('Match data has availablePlayersList?', !!matchData.availablePlayersList);
+                    } 
+                    // Structure: WebSocketMessage { type: "team_selection", data: MatchEventResponse }
+                    else if (wsMessage.data.teams || wsMessage.data.title || wsMessage.data.availablePlayersList) {
+                        matchData = wsMessage.data;
+                        console.log('✓ Extracted match data from wsMessage.data (direct MatchEventResponse)');
+                    }
+                    // Try to access nested data
+                    else if (wsMessage.data.action) {
+                        // This is a TeamSelectionMessage, try to get the data field
+                        console.log('Found action field:', wsMessage.data.action);
+                        console.log('Looking for data field in TeamSelectionMessage...');
+                        // The data should be in wsMessage.data.data
+                        if (wsMessage.data.data) {
+                            matchData = wsMessage.data.data;
+                            console.log('✓ Found data in TeamSelectionMessage.data');
+                        } else {
+                            console.warn('TeamSelectionMessage has no data field');
+                        }
+                    }
+                    // Fallback: use data as-is
+                    else {
+                        matchData = wsMessage.data;
+                        console.log('⚠ Using wsMessage.data as match data (fallback)');
+                    }
+                } else {
+                    console.error('wsMessage.data is null or undefined');
+                }
+                
+                if (!matchData) {
+                    console.error('✗ Could not extract match data from WebSocket message');
+                    console.error('Full message:', JSON.stringify(wsMessage, null, 2));
+                    return;
+                }
+                
+                console.log('=== Processing match update ===');
+                console.log('Match data:', matchData);
+                console.log('Match data has teams:', matchData.teams?.length || 0);
+                console.log('Match data has availablePlayersList:', matchData.availablePlayersList?.length || 0);
+                console.log('Match data teams:', matchData.teams);
+                console.log('Match data availablePlayersList:', matchData.availablePlayersList);
+                
+                // Show notification that update was received
+                if (wsMessage.type === 'team_selection' && wsMessage.data?.action === 'SELECT_PLAYER') {
+                    const playerName = wsMessage.data.userName || 'Player';
+                    showNotification(`${playerName} has been selected!`, 'success');
+                    console.log('✓ Notification shown for player selection');
+                }
+                
+                // Update current match data
+                currentMatchData = matchData;
+                console.log('✓ Updated currentMatchData');
+                
+                // Force UI update with the new match data
+                console.log('=== Calling updateMatchUI ===');
+                updateMatchUI(matchData);
+                console.log('✓ updateMatchUI called');
+                
+                // Auto-detect teamId if userId is available
+                if (userId && matchData.teams) {
+                    autoDetectTeamId(matchData.teams, userId);
+                }
+                
+                // Update button states after UI update
+                setTimeout(() => {
+                    updatePlayerButtonStates();
+                    console.log('✓ UI update completed. Available players:', matchData.availablePlayersList?.length || 0);
+                    console.log('=== Match update handling complete ===');
+                }, 100);
+            } else {
+                console.warn('⚠ Unknown message type:', wsMessage.type);
+                console.warn('Full message:', wsMessage);
+            }
+        }
+
+        function updateMatchUI(matchData) {
+            console.log('Updating UI with match data:', matchData);
+            
+            // Update match title
+            if (matchData.title) {
+                document.getElementById('matchTitle').textContent = matchData.title;
+            }
+
+            // Update draft status
+            if (matchData.draftInProgress !== undefined) {
+                const draftStatusContainer = document.getElementById('draftStatusContainer');
+                const currentPickerContainer = document.getElementById('currentPickerContainer');
+                
+                if (matchData.draftInProgress) {
+                    draftStatusContainer.style.display = 'flex';
+                    currentPickerContainer.style.display = 'flex';
+                    
+                    if (matchData.currentPickerName) {
+                        document.getElementById('currentPicker').textContent = 
+                            `${matchData.currentPickingTeamName || 'Team'}: ${matchData.currentPickerName}'s turn`;
+                    } else {
+                        document.getElementById('currentPicker').textContent = 'Waiting for pick...';
+                    }
+                } else {
+                    draftStatusContainer.style.display = 'none';
+                    currentPickerContainer.style.display = 'none';
+                }
+            }
+
+            // Update teams FIRST to check captain status before rendering buttons
+            if (matchData.teams !== undefined && matchData.teams !== null) {
+                if (Array.isArray(matchData.teams) && matchData.teams.length > 0) {
+                    updateTeams(matchData.teams, matchData.currentPickingTeamId);
+                    // Check if current user is a captain BEFORE updating available players
+                    checkIfCaptain(matchData.teams);
+                } else {
+                    // Teams array is empty - teams haven't been generated yet
+                    document.getElementById('teamsGrid').innerHTML = '<div class="empty-team">Teams have not been generated yet. Please generate teams to start the draft.</div>';
+                    isCaptain = false; // Reset captain status
+                }
+            } else {
+                // If teams is not provided, show empty state
+                document.getElementById('teamsGrid').innerHTML = '<div class="empty-team">No teams data available</div>';
+                isCaptain = false; // Reset captain status
+            }
+
+                // Update available players AFTER checking captain status
+            if (matchData.availablePlayersList !== undefined && matchData.availablePlayersList !== null) {
+                console.log('Updating available players list with', matchData.availablePlayersList.length, 'players');
+                console.log('Available players:', matchData.availablePlayersList);
+                updateAvailablePlayers(matchData.availablePlayersList);
+                const count = matchData.availablePlayers || matchData.availablePlayersList.length || 0;
+                document.getElementById('availableCount').textContent = count;
+                console.log('Available players count updated to:', count);
+            } else {
+                console.warn('No availablePlayersList in matchData');
+                console.log('matchData keys:', Object.keys(matchData));
+                // If availablePlayersList is not provided, show empty state
+                document.getElementById('playerList').innerHTML = '<div class="empty-team">No available players data</div>';
+                document.getElementById('availableCount').textContent = '0';
+            }
+            
+            console.log('=== updateMatchUI completed ===');
+        }
+
+        function updateAvailablePlayers(players) {
+            const playerList = document.getElementById('playerList');
+            console.log('=== updateAvailablePlayers called ===');
+            console.log('Players:', players);
+            console.log('Players array length:', players?.length || 0);
+            console.log('Players is array?', Array.isArray(players));
+            
+            if (!players || players.length === 0) {
+                console.log('No available players to display - clearing list');
+                playerList.innerHTML = '<div class="empty-team">No available players. All players may have been selected, or no players have marked availability yet.</div>';
+                // Force UI update
+                playerList.style.display = 'block';
+                return;
+            }
+            
+            console.log('Rendering', players.length, 'available players');
+            console.log('Player IDs:', players.map(p => p.id));
+
+            // Check selection capability before rendering
+            const canSelect = canSelectPlayer();
+            console.log('Rendering players - canSelect:', canSelect, 'isCaptain:', isCaptain, 'teamId:', teamId, 'currentPickingTeamId:', currentMatchData?.currentPickingTeamId);
+            
+            // Build HTML for players
+            const playersHTML = players.map(player => {
+                const initials = getInitials(player.firstName, player.lastName);
+                const fullName = `${player.firstName || ''} ${player.lastName || ''}`.trim() || player.nickname || 'Unknown';
+                const disabled = !canSelect;
+                const disabledAttr = disabled ? 'disabled' : '';
+                const disabledClass = disabled ? 'disabled' : '';
+                
+                return `
+                    <div class="player-card" data-user-id="${player.id}">
+                        <div class="player-info">
+                            <div class="player-avatar" style="background-image: url('${player.profilePictureUrl || ''}'); background-size: cover;">
+                                ${!player.profilePictureUrl ? initials : ''}
+                            </div>
+                            <div class="player-details">
+                                <h3>${fullName}</h3>
+                                <p>${player.nickname || player.email || ''}</p>
+                            </div>
+                        </div>
+                        <button class="select-btn ${disabledClass}" 
+                                onclick="selectPlayer(${player.id})"
+                                ${disabledAttr}
+                                title="${disabled ? 'Not your turn or you are not the captain' : 'Select player'}">
+                            Select
+                        </button>
+                    </div>
+                `;
+            }).join('');
+            
+            // Update the DOM
+            console.log('Setting innerHTML with', players.length, 'players');
+            playerList.innerHTML = playersHTML;
+            console.log('innerHTML set successfully');
+            
+            // Force a reflow to ensure UI updates
+            void playerList.offsetHeight;
+            
+            // Update button states after rendering if needed
+            updatePlayerButtonStates();
+            
+            console.log('=== updateAvailablePlayers completed ===');
+        }
+
+        function updatePlayerButtonStates() {
+            const canSelect = canSelectPlayer();
+            const buttons = document.querySelectorAll('.select-btn');
+            buttons.forEach(button => {
+                if (canSelect) {
+                    button.disabled = false;
+                    button.classList.remove('disabled');
+                    button.title = 'Select player';
+                } else {
+                    button.disabled = true;
+                    button.classList.add('disabled');
+                    button.title = 'Not your turn or you are not the captain';
+                }
+            });
+        }
+
+        function updateTeams(teams, currentPickingTeamId) {
+            const teamsGrid = document.getElementById('teamsGrid');
+            console.log('=== updateTeams called ===');
+            console.log('Teams:', teams);
+            console.log('Teams array length:', teams?.length || 0);
+            console.log('currentPickingTeamId:', currentPickingTeamId);
+            
+            if (!teams || teams.length === 0) {
+                console.log('No teams to display - clearing grid');
+                teamsGrid.innerHTML = '<div class="empty-team">No teams yet. Teams need to be generated before the draft can begin.</div>';
+                return;
+            }
+            
+            console.log('Rendering', teams.length, 'teams');
+            
+            // Build HTML for teams
+            const teamsHTML = teams.map(team => {
+                const isCurrentTurn = team.id === currentPickingTeamId;
+                const teamClass = isCurrentTurn ? 'team-card current-turn' : 'team-card';
+                
+                // Normalize team ID for comparison
+                const normalizedTeamId = team.id ? Number(team.id) : null;
+                const normalizedCurrentPickingTeamId = currentPickingTeamId ? Number(currentPickingTeamId) : null;
+                const isCurrentTurnNormalized = normalizedTeamId === normalizedCurrentPickingTeamId;
+                
+                console.log(`Team ${team.id} (${team.name}) - isCurrentTurn: ${isCurrentTurnNormalized}, currentPickingTeamId: ${currentPickingTeamId}`);
+                
+                return `
+                    <div class="${isCurrentTurnNormalized ? 'team-card current-turn' : 'team-card'}" data-team-id="${team.id}">
+                        <div class="team-header">
+                            <div>
+                                <div class="team-name">${team.name || 'Team'}</div>
+                                ${team.captain ? `<div class="team-captain">Captain: ${team.captain.firstName || ''} ${team.captain.lastName || ''}</div>` : ''}
+                            </div>
+                            ${team.color ? `<div class="team-color" style="background-color: ${team.color}"></div>` : ''}
+                        </div>
+                        <div class="team-players">
+                            ${team.players && team.players.length > 0 
+                                ? team.players.map(player => {
+                                    const initials = getInitials(player.user?.firstName, player.user?.lastName);
+                                    const fullName = `${player.user?.firstName || ''} ${player.user?.lastName || ''}`.trim() || player.user?.nickname || 'Unknown';
+                                    return `
+                                        <div class="team-player" data-user-id="${player.user?.id}">
+                                            <div class="team-player-avatar" style="background-image: url('${player.user?.profilePictureUrl || ''}'); background-size: cover;">
+                                                ${!player.user?.profilePictureUrl ? initials : ''}
+                                            </div>
+                                            <div class="team-player-name">${fullName}</div>
+                                            ${player.isCaptain ? '<span class="captain-badge">Captain</span>' : ''}
+                                        </div>
+                                    `;
+                                }).join('')
+                                : '<div class="empty-team">No players yet</div>'
+                            }
+                        </div>
+                        <div style="margin-top: 10px; font-size: 12px; color: #6b7280;">
+                            ${team.players ? team.players.length : 0} / ${currentMatchData?.playersPerTeam || 0} players
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Update the DOM
+            console.log('Setting teamsGrid innerHTML with', teams.length, 'teams');
+            teamsGrid.innerHTML = teamsHTML;
+            console.log('teamsGrid innerHTML set successfully');
+            
+            // Force a reflow to ensure UI updates
+            void teamsGrid.offsetHeight;
+            
+            console.log('=== updateTeams completed ===');
+        }
+
+        function checkIfCaptain(teams) {
+            isCaptain = false;
+            console.log('Checking if captain - teams:', teams, 'teamId:', teamId, 'userId:', userId);
+            
+            if (teams && teamId !== null && teamId !== undefined && userId !== null && userId !== undefined) {
+                // Normalize IDs to numbers for comparison
+                const normalizedTeamId = Number(teamId);
+                const normalizedUserId = Number(userId);
+                
+                const userTeam = teams.find(t => Number(t.id) === normalizedTeamId);
+                console.log('User team found:', userTeam);
+                
+                if (userTeam) {
+                    console.log('Team captain:', userTeam.captain);
+                    console.log('Team captain ID:', userTeam.captain?.id);
+                    console.log('Current user ID:', normalizedUserId);
+                    
+                    // Compare IDs (handle both number and string types)
+                    const captainId = userTeam.captain?.id ? Number(userTeam.captain.id) : null;
+                    const idsMatch = captainId === normalizedUserId;
+                    console.log('IDs match:', idsMatch, '(Captain ID:', captainId, ', User ID:', normalizedUserId, ')');
+                    
+                    if (userTeam.captain && idsMatch) {
+                        isCaptain = true;
+                        console.log('User is confirmed as captain');
+                    } else {
+                        console.log('User is NOT the captain. Captain ID:', captainId, 'User ID:', normalizedUserId);
+                        if (userTeam.captain) {
+                            console.log('Captain details:', {
+                                captainId: captainId,
+                                captainIdType: typeof captainId,
+                                userId: normalizedUserId,
+                                userIdType: typeof normalizedUserId
+                            });
+                        }
+                    }
+                } else {
+                    console.log('User team not found for teamId:', normalizedTeamId);
+                    console.log('Available team IDs:', teams.map(t => ({ id: t.id, idType: typeof t.id })));
+                }
+            } else {
+                console.log('Missing required data for captain check:', {
+                    hasTeams: !!teams,
+                    teamId: teamId,
+                    teamIdType: typeof teamId,
+                    userId: userId,
+                    userIdType: typeof userId
+                });
+            }
+            
+            console.log('Final isCaptain status:', isCaptain);
+        }
+
+        function canSelectPlayer() {
+            const checks = {
+                hasMatchData: !!currentMatchData,
+                draftInProgress: currentMatchData?.draftInProgress === true,
+                isCaptain: isCaptain,
+                hasTeamId: !!teamId,
+                isCurrentTurn: currentMatchData?.currentPickingTeamId === teamId,
+                currentPickingTeamId: currentMatchData?.currentPickingTeamId,
+                myTeamId: teamId
+            };
+            
+            console.log('canSelectPlayer() check:', checks);
+            
+            if (!currentMatchData) {
+                console.log('Cannot select: No match data');
+                return false;
+            }
+            if (!currentMatchData.draftInProgress) {
+                console.log('Cannot select: Draft not in progress');
+                return false;
+            }
+            if (!isCaptain) {
+                console.log('Cannot select: User is not captain. isCaptain:', isCaptain);
+                return false;
+            }
+            if (!teamId) {
+                console.log('Cannot select: No team ID');
+                return false;
+            }
+            // Normalize IDs to numbers for comparison
+            const currentPickingTeamId = currentMatchData.currentPickingTeamId ? Number(currentMatchData.currentPickingTeamId) : null;
+            const normalizedTeamId = teamId ? Number(teamId) : null;
+            
+            if (currentPickingTeamId !== normalizedTeamId) {
+                console.log('Cannot select: Not your turn. Current picking team:', currentPickingTeamId, 'Your team:', normalizedTeamId);
+                return false;
+            }
+            
+            console.log('Can select player: All checks passed');
+            return true;
+        }
+
+        function selectPlayer(playerUserId) {
+            console.log('selectPlayer called with userId:', playerUserId);
+            console.log('Current state:', {
+                jwtToken: !!jwtToken,
+                userId: userId,
+                teamId: teamId,
+                isCaptain: isCaptain,
+                draftInProgress: currentMatchData?.draftInProgress,
+                currentPickingTeamId: currentMatchData?.currentPickingTeamId,
+                connected: !!stompClient && stompClient.connected
+            });
+            
+            if (!jwtToken) {
+                showNotification('Authentication required to select players. Please provide a JWT token.', 'error');
+                return;
+            }
+
+            // Re-check captain status before selection
+            if (currentMatchData?.teams) {
+                checkIfCaptain(currentMatchData.teams);
+            }
+            
+            const canSelect = canSelectPlayer();
+            if (!canSelect) {
+                let errorMsg = 'Cannot select player. ';
+                if (!currentMatchData) {
+                    errorMsg += 'No match data.';
+                } else if (!currentMatchData.draftInProgress) {
+                    errorMsg += 'Draft is not in progress.';
+                } else if (!isCaptain) {
+                    errorMsg += `You are not the captain. (User ID: ${userId}, Team ID: ${teamId})`;
+                } else if (!teamId) {
+                    errorMsg += 'No team ID provided.';
+                } else {
+                    const currentPickingTeamId = currentMatchData.currentPickingTeamId ? Number(currentMatchData.currentPickingTeamId) : null;
+                    const normalizedTeamId = teamId ? Number(teamId) : null;
+                    if (currentPickingTeamId !== normalizedTeamId) {
+                        errorMsg += `Not your turn. Current picking team: ${currentPickingTeamId}, Your team: ${normalizedTeamId}`;
+                    }
+                }
+                console.error('Selection blocked:', errorMsg);
+                showNotification(errorMsg, 'error');
+                return;
+            }
+
+            if (!stompClient || !stompClient.connected) {
+                showNotification('Not connected to server', 'error');
+                return;
+            }
+
+            if (!userId || !teamId) {
+                showNotification('User ID and Team ID are required to select players.', 'error');
+                return;
+            }
+
+            console.log('Sending selection message:', {
+                destination: `/app/match-events/${matchId}/select-player`,
+                message: {
+                    matchId: matchId,
+                    teamId: teamId,
+                    userId: playerUserId
+                }
+            });
+
+            const destination = `/app/match-events/${matchId}/select-player`;
+            const message = {
+                matchId: matchId,
+                teamId: teamId,
+                userId: playerUserId
+            };
+
+            console.log('Sending selection message:', message);
+            console.log('Destination:', destination);
+            console.log('STOMP client connected:', stompClient?.connected);
+            
+            // No headers needed - authentication is handled via session (token from query params)
+            // The WebSocket session already has the authentication from the initial connection
+            stompClient.send(destination, {}, JSON.stringify(message));
+            console.log('Selection message sent successfully');
+            
+            // Show immediate feedback
+            showNotification('Selecting player...', 'info');
+            
+            // Also log the state for debugging
+            console.log('=== Player selection initiated ===');
+            console.log('Match ID:', matchId);
+            console.log('Team ID:', teamId);
+            console.log('User ID (player to select):', playerUserId);
+            console.log('Current match data:', currentMatchData);
+            console.log('STOMP connected:', stompClient?.connected);
+            console.log('Subscription active:', window.matchUpdatesSubscription ? 'Yes' : 'No');
+        }
+
+        function getInitials(firstName, lastName) {
+            const first = firstName ? firstName.charAt(0).toUpperCase() : '';
+            const last = lastName ? lastName.charAt(0).toUpperCase() : '';
+            return (first + last) || '?';
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusBadge = document.getElementById('connectionStatus');
+            if (connected) {
+                statusBadge.textContent = 'Connected';
+                statusBadge.className = 'status-badge status-connected';
+            } else {
+                statusBadge.textContent = 'Disconnected';
+                statusBadge.className = 'status-badge status-disconnected';
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideIn 0.3s ease reverse';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', function() {
+            console.log('Draft Selection Page Loaded');
+        });
+    </script>
+</body>
+</html>
+

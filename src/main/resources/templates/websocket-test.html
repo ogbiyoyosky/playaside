@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playvora WebSocket Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        input, button {
+            margin: 10px 0;
+            padding: 10px;
+            font-size: 16px;
+        }
+        input {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status-disconnected {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .status-connecting {
+            background-color: #fff3e0;
+            color: #e65100;
+        }
+        .status-connected {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        #log {
+            border: 1px solid #ddd;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            background-color: #f5f5f5;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .log-info { color: #1976d2; }
+        .log-success { color: #388e3c; }
+        .log-error { color: #d32f2f; }
+        .log-message { color: #7b1fa2; }
+        h3 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 Playvora WebSocket Test</h1>
+        
+        <div id="status" class="status-disconnected">
+            ❌ Disconnected
+        </div>
+
+        <h3>1. Enter Your JWT Token</h3>
+        <input type="text" id="jwtToken" placeholder="Paste your JWT token here or click 'Get from Cookies'">
+        <button onclick="getTokenFromCookies()">Get Token from Cookies</button>
+
+        <h3>2. Connect</h3>
+        <button id="connectBtn" onclick="connect()">Connect to WebSocket</button>
+        <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+
+        <h3>3. Test Subscription (After Connect)</h3>
+        <input type="text" id="matchId" placeholder="Enter Match ID (e.g., 123)" value="123">
+        <button id="subscribeBtn" onclick="subscribe()" disabled>Subscribe to Match Updates</button>
+
+        <h3>4. Send Test Message (After Subscribe)</h3>
+        <button id="sendBtn" onclick="sendTestMessage()" disabled>Send Test Availability Update</button>
+
+        <h3>Connection Log</h3>
+        <div id="log"></div>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <script>
+        let stompClient = null;
+        let subscription = null;
+        const wsUrl = window.location.protocol + '//' + window.location.host + '/ws';
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = `log-${type}`;
+            logDiv.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateStatus(status, message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status-${status}`;
+            
+            const icons = {
+                'disconnected': '❌',
+                'connecting': '🔄',
+                'connected': '✅'
+            };
+            
+            statusDiv.textContent = `${icons[status]} ${message}`;
+        }
+
+        function getTokenFromCookies() {
+            const token = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('access_token='))
+                ?.split('=')[1];
+            
+            if (token) {
+                document.getElementById('jwtToken').value = token;
+                log('✅ Token found in cookies!', 'success');
+            } else {
+                log('❌ No access_token cookie found. Please login first.', 'error');
+            }
+        }
+
+        function connect() {
+            const token = document.getElementById('jwtToken').value.trim();
+            
+            if (!token) {
+                log('❌ Please enter a JWT token first!', 'error');
+                return;
+            }
+
+            updateStatus('connecting', 'Connecting...');
+            log('🔄 Connecting to ' + wsUrl, 'info');
+            
+            const socket = new SockJS(wsUrl);
+            stompClient = Stomp.over(socket);
+            
+            // Enable debug output
+            stompClient.debug = (str) => {
+                console.log(str);
+            };
+
+            const headers = {
+                'Authorization': `Bearer ${token}`
+            };
+
+            log('📤 Sending CONNECT frame with Authorization header', 'info');
+
+            stompClient.connect(
+                headers,
+                (frame) => {
+                    updateStatus('connected', 'Connected!');
+                    log('✅ Connected successfully!', 'success');
+                    log(`Frame: ${frame}`, 'info');
+                    
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('disconnectBtn').disabled = false;
+                    document.getElementById('subscribeBtn').disabled = false;
+                },
+                (error) => {
+                    updateStatus('disconnected', 'Connection Failed');
+                    log(`❌ Connection error: ${error}`, 'error');
+                    
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('disconnectBtn').disabled = true;
+                }
+            );
+        }
+
+        function disconnect() {
+            if (stompClient !== null) {
+                stompClient.disconnect(() => {
+                    updateStatus('disconnected', 'Disconnected');
+                    log('👋 Disconnected from WebSocket', 'info');
+                });
+            }
+            
+            document.getElementById('connectBtn').disabled = false;
+            document.getElementById('disconnectBtn').disabled = true;
+            document.getElementById('subscribeBtn').disabled = true;
+            document.getElementById('sendBtn').disabled = true;
+        }
+
+        function subscribe() {
+            const matchId = document.getElementById('matchId').value.trim();
+            
+            if (!matchId) {
+                log('❌ Please enter a Match ID!', 'error');
+                return;
+            }
+
+            const topic = `/topic/match/${matchId}`;
+            log(`📡 Subscribing to: ${topic}`, 'info');
+
+            subscription = stompClient.subscribe(topic, (message) => {
+                log(`📨 Message received on ${topic}:`, 'message');
+                log(message.body, 'message');
+                
+                try {
+                    const data = JSON.parse(message.body);
+                    log(`Parsed data: ${JSON.stringify(data, null, 2)}`, 'message');
+                } catch (e) {
+                    log(`Could not parse as JSON: ${message.body}`, 'message');
+                }
+            });
+
+            log(`✅ Subscribed to ${topic}`, 'success');
+            document.getElementById('sendBtn').disabled = false;
+        }
+
+        function sendTestMessage() {
+            const matchId = document.getElementById('matchId').value.trim();
+            
+            if (!matchId) {
+                log('❌ Please enter a Match ID!', 'error');
+                return;
+            }
+
+            const destination = `/app/match/${matchId}/availability`;
+            const message = {
+                status: 'AVAILABLE',
+                timestamp: new Date().toISOString()
+            };
+
+            log(`📤 Sending message to: ${destination}`, 'info');
+            log(`Message: ${JSON.stringify(message, null, 2)}`, 'info');
+
+            stompClient.send(destination, {}, JSON.stringify(message));
+            
+            log('✅ Message sent!', 'success');
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        // Try to get token from cookies on page load
+        window.onload = () => {
+            log('🚀 WebSocket Test Page Loaded', 'info');
+            log('💡 Tip: Login first to get a JWT token in cookies', 'info');
+            log('🔗 WebSocket URL: ' + wsUrl, 'info');
+            getTokenFromCookies();
+        };
+    </script>
+</body>
+</html>

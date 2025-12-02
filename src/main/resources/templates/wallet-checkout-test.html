@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wallet Checkout Test (Stripe Payment Intents)</title>
+    <style>
+        body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 2rem; max-width: 900px; background: #f9fafb; }
+        h1, h2, h3 { color: #111827; }
+        .card { background: #ffffff; border-radius: 0.75rem; padding: 1.75rem; box-shadow: 0 10px 25px rgba(15,23,42,0.06); border: 1px solid #e5e7eb; }
+        label { display: block; margin-top: 1rem; font-weight: 500; color: #374151; }
+        input, textarea, button { margin-top: 0.25rem; padding: 0.55rem 0.75rem; font-size: 0.95rem; border-radius: 0.5rem; border: 1px solid #d1d5db; width: 100%; box-sizing: border-box; }
+        textarea { resize: vertical; min-height: 3rem; }
+        input:focus, textarea:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 1px rgba(79,70,229,0.4); }
+        button { cursor: pointer; background: #22c55e; color: white; font-weight: 600; border: none; margin-top: 1rem; }
+        button:hover { background: #16a34a; }
+        button:disabled { background: #9ca3af; cursor: not-allowed; }
+        pre { background: #111827; color: #e5e7eb; padding: 1rem; border-radius: 0.75rem; overflow-x: auto; font-size: 0.85rem; line-height: 1.4; margin-top: 1rem; }
+        .row { margin-bottom: 1.25rem; }
+        .pill { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 999px; font-size: 0.75rem; background: #e0f2fe; color: #075985; margin-left: 0.5rem; }
+        .status { margin-top: 0.5rem; font-size: 0.85rem; }
+        .status span { padding: 0.15rem 0.5rem; border-radius: 999px; }
+        .status-idle span { background: #f3f4f6; color: #4b5563; }
+        .status-loading span { background: #eff6ff; color: #1d4ed8; }
+        .status-success span { background: #ecfdf5; color: #15803d; }
+        .status-error span { background: #fef2f2; color: #b91c1c; }
+        .stack { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; }
+        code { background: #e5e7eb; padding: 0.1rem 0.35rem; border-radius: 0.25rem; font-size: 0.85rem; }
+        #card-element { padding: 0.75rem 0.85rem; border-radius: 0.5rem; border: 1px solid #d1d5db; background: #f9fafb; margin-top: 0.35rem; }
+        #card-errors { color: #b91c1c; font-size: 0.85rem; margin-top: 0.4rem; min-height: 1.1rem; }
+        #payment-request-button { margin-top: 0.75rem; }
+        .applepay-note { font-size: 0.85rem; color: #4b5563; margin-top: 0.35rem; }
+    </style>
+    <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+<h1>Wallet Checkout Test (Payment Intents + Stripe.js)</h1>
+<p>
+    This page demonstrates the full web <code>WALLET_DEPOSIT</code> flow:
+    create a Payment Intent via <code>/api/v1/payments/intent</code>, collect card details
+    with <code>Stripe Elements</code>, confirm the payment with <code>stripe.confirmCardPayment</code>,
+    then notify your backend via <code>/api/v1/payments/confirm/{paymentIntentId}</code>.
+</p>
+
+<div class="card">
+    <h2>Configuration</h2>
+    <div class="row">
+        <label>
+            API Base URL
+            <span class="pill">used to call your backend</span>
+            <input id="baseUrl" type="text" value="http://localhost:8080" />
+        </label>
+    </div>
+
+    <div class="row">
+        <label>
+            JWT Token (Bearer)
+            <span class="pill">for authenticated /payments APIs</span>
+            <textarea id="jwt" rows="2" placeholder="Paste your JWT here"></textarea>
+        </label>
+    </div>
+
+    <div class="row">
+        <label>
+            X-User-Role-Id
+            <span class="pill">optional role context header</span>
+            <input id="userRoleId" type="text" placeholder="UUID of user role (optional)" />
+        </label>
+    </div>
+
+    <h2>Top-up details</h2>
+    <div class="row">
+        <label>
+            Amount
+            <span class="pill">in your wallet currency</span>
+            <input id="amount" type="number" step="0.01" min="0.01" value="5.00" />
+        </label>
+    </div>
+    <div class="row">
+        <label>
+            Description (optional)
+            <input id="description" type="text" value="Wallet funding test (Payment Intents)" />
+        </label>
+    </div>
+
+    <h2>Card details</h2>
+    <p>Use a Stripe test card, e.g. <code>4242 4242 4242 4242</code> with any future expiry and CVC.</p>
+    <div id="card-element"></div>
+    <div id="card-errors"></div>
+
+    <div class="row">
+        <label>
+            Payment Intent ID
+            <input id="paymentIntentId" type="text" readonly />
+        </label>
+    </div>
+
+    <div class="stack">
+        <button id="createIntentBtn">1. Create <code>WALLET_DEPOSIT</code> intent</button>
+        <div class="status status-idle" id="intentStatus"><span>Idle</span></div>
+    </div>
+
+    <div class="stack">
+        <button id="confirmPaymentBtn">2. Confirm with Stripe.js</button>
+        <div class="status status-idle" id="confirmStatus"><span>Idle</span></div>
+    </div>
+
+    <h2>Apple Pay / Google Pay (Payment Request Button)</h2>
+    <p class="applepay-note">
+        If your browser and device support it, you'll see a native Apple Pay or Google Pay button below.
+        This uses the same <code>WALLET_DEPOSIT</code> flow, but with a one-tap payment experience.
+    </p>
+    <div id="payment-request-button"></div>
+    <div class="status status-idle" id="prStatus"><span>Idle</span></div>
+
+    <h3>Debug output</h3>
+    <pre id="output">{}</pre>
+</div>
+
+<script>
+    const $ = (id) => document.getElementById(id);
+
+    let stripeInstance = null;
+    let elementsInstance = null;
+    let cardElement = null;
+    let clientSecret = null;
+    let configCurrency = null;
+    let paymentRequest = null;
+
+    function setStatus(el, mode, text) {
+        el.className = 'status status-' + mode;
+        el.querySelector('span').textContent = text;
+    }
+
+    function getHeaders() {
+        const jwt = $('jwt').value.trim();
+        const headers = { 'Content-Type': 'application/json' };
+        if (jwt) {
+            headers['Authorization'] = 'Bearer ' + jwt;
+        }
+        const roleId = $('userRoleId').value.trim();
+        if (roleId) {
+            headers['X-User-Role-Id'] = roleId;
+        }
+        return headers;
+    }
+
+    function log(obj) {
+        $('output').textContent = JSON.stringify(obj, null, 2);
+        console.log('[Wallet checkout test]', obj);
+    }
+
+    async function setupPaymentRequestButton(amount) {
+        const prStatusEl = $('prStatus');
+
+        if (!stripeInstance || !elementsInstance) {
+            return;
+        }
+
+        if (!amount || amount <= 0) {
+            setStatus(prStatusEl, 'error', 'Enter a valid amount to enable Apple Pay / Google Pay');
+            return;
+        }
+
+        const totalAmountMinor = Math.round(amount * 100); // e.g. GBP -> pence
+
+        paymentRequest = stripeInstance.paymentRequest({
+            country: 'GB',
+            currency: (configCurrency || 'gbp').toLowerCase(),
+            total: {
+                label: 'Wallet top-up',
+                amount: totalAmountMinor
+            },
+            requestPayerName: true,
+            requestPayerEmail: true
+        });
+
+        const prButton = elementsInstance.create('paymentRequestButton', {
+            paymentRequest,
+            style: {
+                paymentRequestButton: {
+                    type: 'default',
+                    theme: 'dark',
+                    height: '44px'
+                }
+            }
+        });
+
+        try {
+            const result = await paymentRequest.canMakePayment();
+            if (result) {
+                prButton.mount('#payment-request-button');
+                setStatus(prStatusEl, 'success', 'Apple Pay / Google Pay available');
+            } else {
+                document.getElementById('payment-request-button').style.display = 'none';
+                setStatus(prStatusEl, 'error', 'Apple Pay / Google Pay not available in this browser');
+            }
+        } catch (err) {
+            console.error(err);
+            setStatus(prStatusEl, 'error', err.message || 'Error setting up Apple Pay / Google Pay');
+        }
+
+        paymentRequest.on('paymentmethod', async (ev) => {
+            const baseUrl = $('baseUrl').value.replace(/\/+$/, '');
+            const statusEl = $('prStatus');
+
+            setStatus(statusEl, 'loading', 'Processing Apple Pay / Google Pay…');
+
+            try {
+                // 1) Create a Payment Intent on the backend for this wallet deposit
+                const body = {
+                    amount: amount,
+                    type: 'WALLET_DEPOSIT',
+                    description: 'Wallet top-up via Apple Pay / Google Pay'
+                };
+
+                const resIntent = await fetch(baseUrl + '/api/v1/payments/intent', {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify(body)
+                });
+
+                const intentData = await resIntent.json().catch(() => ({}));
+                log({ applePayCreateIntentResponse: intentData });
+
+                if (!resIntent.ok) {
+                    ev.complete('fail');
+                    setStatus(statusEl, 'error', 'Error creating intent: ' + (intentData?.message || resIntent.status));
+                    return;
+                }
+
+                const apClientSecret = intentData?.data?.clientSecret;
+                const apPaymentIntentId = intentData?.data?.paymentIntentId;
+
+                if (!apClientSecret || !apPaymentIntentId) {
+                    ev.complete('fail');
+                    setStatus(statusEl, 'error', 'Missing clientSecret/paymentIntentId for Apple Pay flow');
+                    return;
+                }
+
+                // 2) Confirm the PaymentIntent with the provided payment method (Apple Pay / Google Pay)
+                const confirmResult = await stripeInstance.confirmCardPayment(
+                    apClientSecret,
+                    {
+                        payment_method: ev.paymentMethod.id
+                    },
+                    { handleActions: false }
+                );
+
+                log({ applePayConfirmResult: confirmResult });
+
+                if (confirmResult.error) {
+                    ev.complete('fail');
+                    setStatus(statusEl, 'error', confirmResult.error.message || 'Stripe Apple Pay error');
+                    return;
+                }
+
+                let pi = confirmResult.paymentIntent;
+
+                // If additional actions are required (3DS, etc.), handle them
+                if (pi && pi.status === 'requires_action') {
+                    const nextResult = await stripeInstance.confirmCardPayment(apClientSecret);
+                    log({ applePayNextActionResult: nextResult });
+                    if (nextResult.error) {
+                        ev.complete('fail');
+                        setStatus(statusEl, 'error', nextResult.error.message || 'Stripe Apple Pay next action error');
+                        return;
+                    }
+                    pi = nextResult.paymentIntent;
+                }
+
+                if (!pi || pi.status !== 'succeeded') {
+                    ev.complete('fail');
+                    setStatus(statusEl, 'error', 'Payment not completed on Stripe (status: ' + (pi?.status || 'unknown') + ')');
+                    return;
+                }
+
+                // 3) Notify backend so it can mark the payment as SUCCEEDED and top up the wallet
+                const resBackend = await fetch(
+                    baseUrl + '/api/v1/payments/confirm/' + encodeURIComponent(pi.id),
+                    {
+                        method: 'POST',
+                        headers: getHeaders()
+                    }
+                );
+
+                const backendData = await resBackend.json().catch(() => ({}));
+                log({ applePayBackendConfirmResponse: backendData });
+
+                if (!resBackend.ok) {
+                    ev.complete('fail');
+                    setStatus(statusEl, 'error', 'Backend confirm failed: ' + (backendData?.message || resBackend.status));
+                    return;
+                }
+
+                ev.complete('success');
+                setStatus(statusEl, 'success', 'Apple Pay / Google Pay payment confirmed & wallet topped up');
+                alert('Apple Pay / Google Pay payment confirmed. Wallet should now be topped up.');
+            } catch (err) {
+                console.error(err);
+                ev.complete('fail');
+                setStatus(statusEl, 'error', err.message || 'Unknown Apple Pay / Google Pay error');
+            }
+        });
+    }
+    async function initStripeIfNeeded() {
+        if (stripeInstance && elementsInstance && cardElement) {
+            return stripeInstance;
+        }
+
+        const baseUrl = $('baseUrl').value.replace(/\/+$/, '');
+        try {
+            const res = await fetch(baseUrl + '/api/v1/payments/config', {
+                headers: getHeaders()
+            });
+            const cfg = await res.json().catch(() => ({}));
+            log({ configResponse: cfg });
+            const pk = cfg?.data?.publishableKey;
+            configCurrency = (cfg?.data?.currency || 'GBP').toLowerCase();
+            if (!pk) {
+                alert('Missing publishable key in /api/v1/payments/config response');
+                return null;
+            }
+            stripeInstance = Stripe(pk);
+            elementsInstance = stripeInstance.elements();
+            cardElement = elementsInstance.create('card');
+            cardElement.mount('#card-element');
+
+            cardElement.on('change', function (event) {
+                const displayError = $('card-errors');
+                if (event.error) {
+                    displayError.textContent = event.error.message;
+                } else {
+                    displayError.textContent = '';
+                }
+            });
+
+            return stripeInstance;
+        } catch (err) {
+            console.error(err);
+            log({ configError: err.message || String(err) });
+            alert('Error fetching payment config (see debug output).');
+            return null;
+        }
+    }
+
+    $('createIntentBtn').addEventListener('click', async () => {
+        const baseUrl = $('baseUrl').value.replace(/\/+$/, '');
+        const amount = parseFloat($('amount').value);
+        const description = $('description').value;
+        const statusEl = $('intentStatus');
+
+        if (!amount || amount <= 0) {
+            alert('Amount must be > 0');
+            return;
+        }
+
+        const stripeOk = await initStripeIfNeeded();
+        if (!stripeOk) {
+            return;
+        }
+
+        const body = {
+            amount: amount,
+            type: 'WALLET_DEPOSIT',
+            description: description || null
+        };
+
+        setStatus(statusEl, 'loading', 'Creating Payment Intent…');
+
+        try {
+            const res = await fetch(baseUrl + '/api/v1/payments/intent', {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(body)
+            });
+
+            const data = await res.json().catch(() => ({}));
+            log({ createIntentResponse: data });
+
+            if (!res.ok) {
+                setStatus(statusEl, 'error', 'Error: ' + (data?.message || res.status));
+                alert('Error creating payment intent (see debug output).');
+                return;
+            }
+
+            clientSecret = data?.data?.clientSecret;
+            const paymentIntentId = data?.data?.paymentIntentId;
+
+            if (!clientSecret || !paymentIntentId) {
+                setStatus(statusEl, 'error', 'Missing clientSecret or paymentIntentId in response');
+                alert('Missing clientSecret/paymentIntentId in response');
+                return;
+            }
+
+            $('paymentIntentId').value = paymentIntentId;
+            setStatus(statusEl, 'success', 'Intent created: ' + paymentIntentId);
+
+            // Also (re)setup Apple Pay / Google Pay button for this amount
+            await setupPaymentRequestButton(amount);
+        } catch (err) {
+            console.error(err);
+            log({ createIntentError: err.message || String(err) });
+            setStatus(statusEl, 'error', 'Error: ' + (err.message || 'Unknown'));
+        }
+    });
+
+    $('confirmPaymentBtn').addEventListener('click', async () => {
+        const baseUrl = $('baseUrl').value.replace(/\/+$/, '');
+        const statusEl = $('confirmStatus');
+        const paymentIntentId = $('paymentIntentId').value.trim();
+
+        if (!clientSecret || !paymentIntentId) {
+            alert('Create a Payment Intent first (step 1).');
+            return;
+        }
+        if (!stripeInstance || !cardElement) {
+            alert('Stripe.js is not initialized. Try step 1 again.');
+            return;
+        }
+
+        setStatus(statusEl, 'loading', 'Confirming with Stripe…');
+
+        try {
+            const result = await stripeInstance.confirmCardPayment(clientSecret, {
+                payment_method: {
+                    card: cardElement
+                }
+            });
+
+            log({ stripeConfirmResult: result });
+
+            if (result.error) {
+                const msg = result.error.message || 'Stripe error';
+                $('card-errors').textContent = msg;
+                setStatus(statusEl, 'error', msg);
+                return;
+            }
+
+            if (!result.paymentIntent || result.paymentIntent.status !== 'succeeded') {
+                setStatus(statusEl, 'error', 'Payment not completed on Stripe');
+                alert('Payment is not completed on Stripe (status: ' + (result.paymentIntent?.status || 'unknown') + ')');
+                return;
+            }
+
+            // Notify backend so it can mark the payment as SUCCEEDED and top up the wallet
+            const res = await fetch(
+                baseUrl + '/api/v1/payments/confirm/' + encodeURIComponent(result.paymentIntent.id),
+                {
+                    method: 'POST',
+                    headers: getHeaders()
+                }
+            );
+
+            const data = await res.json().catch(() => ({}));
+            log({ backendConfirmResponse: data });
+
+            if (!res.ok) {
+                setStatus(statusEl, 'error', 'Backend error: ' + (data?.message || res.status));
+                alert('Backend confirm failed (see debug output).');
+                return;
+            }
+
+            setStatus(statusEl, 'success', 'Payment confirmed & wallet topped up');
+            alert('Payment confirmed. Wallet should now be topped up.');
+        } catch (err) {
+            console.error(err);
+            log({ confirmFlowError: err.message || String(err) });
+            setStatus(statusEl, 'error', err.message || 'Unknown error');
+        }
+    });
+</script>
+
+</body>
+</html>
+

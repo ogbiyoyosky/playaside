@@ -1,0 +1,38 @@
+2025-11-28T17:19:37Z INF Starting tunnel tunnelID=63903943-5f06-4eee-821b-a5f3849e0391
+2025-11-28T17:19:37Z INF Version 2025.10.0 (Checksum 9771b868933057df853166e8a7f126c7ef5002e7e3f4c10f3227a5803d5dd445)
+2025-11-28T17:19:37Z INF GOOS: darwin, GOVersion: go1.25.2, GoArch: arm64
+2025-11-28T17:19:37Z INF Settings: map[cred-file:/Users/freeman/.cloudflared/63903943-5f06-4eee-821b-a5f3849e0391.json credentials-file:/Users/freeman/.cloudflared/63903943-5f06-4eee-821b-a5f3849e0391.json]
+2025-11-28T17:19:37Z INF cloudflared will not automatically update if installed by a package manager.
+2025-11-28T17:19:37Z INF Generated Connector ID: 8213641a-9314-4e6e-8acc-2d6c4b1306f4
+2025-11-28T17:19:37Z INF Initial protocol quic
+2025-11-28T17:19:37Z INF ICMP proxy will use 192.168.0.12 as source for IPv4
+2025-11-28T17:19:37Z INF ICMP proxy will use fe80::1cdc:3b42:32fa:d7ae in zone en0 as source for IPv6
+2025-11-28T17:19:37Z INF Created ICMP proxy listening on 192.168.0.12:0
+2025-11-28T17:19:37Z INF ICMP proxy will use 192.168.0.12 as source for IPv4
+2025-11-28T17:19:37Z INF ICMP proxy will use fe80::1cdc:3b42:32fa:d7ae in zone en0 as source for IPv6
+2025-11-28T17:19:37Z INF Starting metrics server on 127.0.0.1:20242/metrics
+2025-11-28T17:19:37Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=0 event=0 ip=198.41.192.67
+2025-11-28T17:19:38Z INF Registered tunnel connection connIndex=0 connection=dc656420-b049-4e8a-ba9a-b255dffb3b8c event=0 ip=198.41.192.67 location=man01 protocol=quic
+2025-11-28T17:19:38Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=1 event=0 ip=198.41.200.53
+2025-11-28T17:19:38Z INF Registered tunnel connection connIndex=1 connection=ed249c38-abe1-4e74-94b7-236c6834b422 event=0 ip=198.41.200.53 location=man04 protocol=quic
+2025-11-28T17:19:39Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=2 event=0 ip=198.41.192.77
+2025-11-28T17:19:39Z INF Registered tunnel connection connIndex=2 connection=b4691cf4-debc-4a43-9506-e31d8a129502 event=0 ip=198.41.192.77 location=man01 protocol=quic
+2025-11-28T17:19:39Z INF Initiating graceful shutdown due to signal interrupt ...
+2025-11-28T17:19:40Z ERR failed to run the datagram handler error="context canceled" connIndex=2 event=0 ip=198.41.192.77
+2025-11-28T17:19:40Z ERR failed to serve tunnel connection error="accept stream listener encountered a failure while serving" connIndex=2 event=0 ip=198.41.192.77
+2025-11-28T17:19:40Z ERR Serve tunnel error error="accept stream listener encountered a failure while serving" connIndex=2 event=0 ip=198.41.192.77
+2025-11-28T17:19:40Z INF Retrying connection in up to 1s connIndex=2 event=0 ip=198.41.192.77
+2025-11-28T17:19:40Z ERR failed to run the datagram handler error="context canceled" connIndex=0 event=0 ip=198.41.192.67
+2025-11-28T17:19:40Z ERR failed to serve tunnel connection error="accept stream listener encountered a failure while serving" connIndex=0 event=0 ip=198.41.192.67
+2025-11-28T17:19:40Z ERR failed to run the datagram handler error="context canceled" connIndex=1 event=0 ip=198.41.200.53
+2025-11-28T17:19:40Z ERR Serve tunnel error error="accept stream listener encountered a failure while serving" connIndex=0 event=0 ip=198.41.192.67
+2025-11-28T17:19:40Z INF Retrying connection in up to 1s connIndex=0 event=0 ip=198.41.192.67
+2025-11-28T17:19:40Z ERR failed to serve tunnel connection error="accept stream listener encountered a failure while serving" connIndex=1 event=0 ip=198.41.200.53
+2025-11-28T17:19:40Z ERR Serve tunnel error error="accept stream listener encountered a failure while serving" connIndex=1 event=0 ip=198.41.200.53
+2025-11-28T17:19:40Z INF Retrying connection in up to 1s connIndex=1 event=0 ip=198.41.200.53
+2025-11-28T17:19:40Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=3 event=0 ip=198.41.200.13
+2025-11-28T17:19:40Z INF Registered tunnel connection connIndex=3 connection=078c857b-a788-4a0a-b499-88a67fcf7f1c event=0 ip=198.41.200.13 location=man02 protocol=quic
+2025-11-28T17:19:40Z ERR failed to run the datagram handler error="Application error 0x0 (remote)" connIndex=3 event=0 ip=198.41.200.13
+2025-11-28T17:19:40Z ERR failed to serve tunnel connection error="accept stream listener encountered a failure while serving" connIndex=3 event=0 ip=198.41.200.13
+2025-11-28T17:19:40Z ERR Serve tunnel error error="accept stream listener encountered a failure while serving" connIndex=3 event=0 ip=198.41.200.13
+2025-11-28T17:19:40Z INF Retrying connection in up to 1s connIndex=3 event=0 ip=198.41.200.13

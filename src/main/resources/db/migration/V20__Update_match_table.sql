@@ -1,0 +1,1 @@
+alter table matches add column type varchar(255) not null default 'FOOTBALL';

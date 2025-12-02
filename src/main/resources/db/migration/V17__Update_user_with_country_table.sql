@@ -1,0 +1,1 @@
+alter table users add column country varchar(255) null;

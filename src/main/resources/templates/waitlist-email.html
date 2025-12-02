@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Welcome to the Playaside waitlist</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f4f5; margin: 0; padding: 24px;">
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+    <tr>
+        <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" role="presentation"
+                   style="background-color: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 4px 12px rgba(15,23,42,0.08);">
+                <tr>
+                    <td align="left">
+                        <h1 style="margin: 0 0 16px; font-size: 24px; color: #0f172a;">
+                            Welcome to the Playaside waitlist
+                        </h1>
+                        <p style="margin: 0 0 12px; font-size: 15px; color: #1f2937;">
+                            Hi there,
+                        </p>
+                        <p style="margin: 0 0 12px; font-size: 15px; color: #374151;">
+                            Thanks for joining the Playaside waitlist with
+                            <strong th:text="${email}">user@example.com</strong>.
+                        </p>
+                        <p style="margin: 0 0 12px; font-size: 15px; color: #374151;">
+                            We’ll keep you posted as we roll out new features and availability in your area.
+                        </p>
+                        <p style="margin: 24px 0 4px; font-size: 15px; color: #111827;">
+                            Cheers,
+                        </p>
+                        <p style="margin: 0; font-size: 15px; color: #111827; font-weight: 600;">
+                            The Playaside Team
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>
+
+
+

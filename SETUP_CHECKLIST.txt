@@ -1,0 +1,176 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    GOOGLE OAUTH2 SETUP CHECKLIST                              ║
+║                         Playvora API                                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📋 QUICK CHECKLIST - Complete these steps in order:
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 1. GOOGLE CLOUD CONSOLE SETUP                                                │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+[ ] Go to https://console.cloud.google.com/apis/credentials
+[ ] Create or select a project
+[ ] Create OAuth 2.0 Client ID (Web application)
+[ ] Add authorized redirect URI:
+    ✓ http://localhost:8080/api/v1/auth/callback/google
+[ ] Save your Client ID and Client Secret
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 2. LOCAL ENVIRONMENT SETUP                                                   │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+[ ] Copy environment template:
+    $ cp env.example .env
+
+[ ] Edit .env file and update:
+    [ ] SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID
+    [ ] SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET
+    [ ] SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI
+    [ ] SPRING_DATASOURCE_URL
+    [ ] SPRING_DATASOURCE_USERNAME
+    [ ] SPRING_DATASOURCE_PASSWORD
+    [ ] JWT_SECRET (generate with: openssl rand -base64 32)
+
+[ ] Verify database is running:
+    $ docker ps  (if using Docker)
+    OR
+    $ pg_isready (if using local PostgreSQL)
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 3. TEST APPLICATION                                                          │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+[ ] Start the application:
+    $ ./mvnw spring-boot:run
+
+[ ] Verify application started successfully
+[ ] Check logs for "Successfully loaded .env file"
+[ ] No errors in startup logs
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 4. TEST OAUTH FLOW                                                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+[ ] Open browser and navigate to:
+    http://localhost:8080/api/v1/auth/authorize/google
+
+[ ] Expected flow:
+    [ ] Redirected to Google login page
+    [ ] Successfully log in with Google account
+    [ ] Redirected back to https://expitra.com
+    [ ] Cookies are set (check DevTools > Application > Cookies)
+
+[ ] Verify cookies are set:
+    [ ] access_token cookie exists
+    [ ] refresh_token cookie exists
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 5. VERIFY AUTHENTICATION                                                     │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+[ ] Check application logs for successful authentication
+[ ] User created/found in database
+[ ] JWT token generated
+[ ] Cookies set successfully
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 6. OPTIONAL - TEST PROTECTED ENDPOINTS                                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+[ ] Test accessing protected endpoint with cookies:
+    $ curl -X GET http://localhost:8080/api/v1/user/profile \
+      --cookie "access_token=YOUR_TOKEN"
+
+[ ] Verify protected endpoint returns user data
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 7. DOCUMENTATION REVIEW                                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+[ ] Read QUICK_START.md for rapid setup
+[ ] Read GOOGLE_OAUTH_SETUP.md for detailed guide
+[ ] Read OAUTH_README.md for technical details
+[ ] Review env.example for all configuration options
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎯 CRITICAL CONFIGURATION SUMMARY
+
+Your Google OAuth callback URL MUST be:
+  ┌────────────────────────────────────────────────────────────────┐
+  │ http://localhost:8080/api/v1/auth/callback/google             │
+  └────────────────────────────────────────────────────────────────┘
+
+This MUST match in BOTH places:
+  1. Your .env file (SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI)
+  2. Google Cloud Console (Authorized redirect URIs)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🚨 COMMON ISSUES & SOLUTIONS
+
+Issue: "redirect_uri_mismatch"
+Solution: Verify redirect URI matches exactly in .env and Google Console
+
+Issue: "No .env file found"
+Solution: Create .env file from env.example in project root
+
+Issue: Application won't start
+Solution: Check database is running and credentials are correct
+
+Issue: OAuth doesn't trigger
+Solution: Enable debug logging and check Spring Security configuration
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📚 FILES CREATED FOR YOU
+
+  env.example              - Complete environment variables template
+  QUICK_START.md           - 5-minute setup guide
+  GOOGLE_OAUTH_SETUP.md    - Detailed OAuth configuration guide
+  OAUTH_README.md          - Technical documentation
+  SETUP_CHECKLIST.txt      - This file
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ WHEN EVERYTHING WORKS
+
+You should see in logs:
+  ✓ "Successfully loaded .env file"
+  ✓ OAuth2 client registration initialized
+  ✓ No errors during startup
+
+When testing:
+  ✓ Browser redirects to Google
+  ✓ After login, redirects to https://expitra.com
+  ✓ Cookies are set in browser
+  ✓ User record created/updated in database
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🔄 PRODUCTION DEPLOYMENT CHECKLIST
+
+For production, additionally:
+
+[ ] Update .env with production URLs:
+    [ ] SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI=https://api.your-domain.com/api/v1/auth/callback/google
+    [ ] APP_BASE_URL=https://api.your-domain.com
+    [ ] APPLICATION_FRONTEND_URL=https://your-frontend-domain.com
+
+[ ] Add production redirect URI to Google Cloud Console:
+    ✓ https://api.your-domain.com/api/v1/auth/callback/google
+
+[ ] Use environment variables instead of .env file
+[ ] Enable HTTPS (cookies are marked as Secure)
+[ ] Set strong JWT secret
+[ ] Configure CORS for your domain
+[ ] Test end-to-end flow in production
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Need help? Check the troubleshooting sections in the documentation files.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+

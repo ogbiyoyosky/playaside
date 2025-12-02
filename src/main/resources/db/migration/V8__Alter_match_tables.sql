@@ -1,0 +1,1 @@
+alter table matches add column banner_url varchar(255) null;
