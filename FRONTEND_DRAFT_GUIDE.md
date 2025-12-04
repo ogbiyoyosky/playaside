@@ -44,6 +44,14 @@ The frontend connects to the WebSocket server using STOMP over SockJS:
 // Send messages to: /app/match-events/{matchId}/select-player
 ```
 
+#### Heartbeats & Logging
+
+- **Heartbeat Interval**: The client is configured to send and expect STOMP heartbeats every 10 seconds (`stompClient.heartbeat.outgoing = 10000`, `stompClient.heartbeat.incoming = 10000`), matching the backend broker configuration.
+- **When Heartbeats Run**: Heartbeats are only exchanged while there is an active WebSocket/STOMP connection and at least one subscription; they are used by the client and broker to detect dead connections.
+- **Where You See Them**:
+  - **Browser**: Open the DevTools console; heartbeat frames and other STOMP frames appear as `"STOMP Debug: ..."` messages when the connection is established.
+  - **Server**: Heartbeat frames are not logged by default; enable DEBUG/TRACE logging for Spring WebSocket/STOMP packages if you need to see server-side heartbeat activity.
+
 ### Real-time Updates
 
 When a player is selected:

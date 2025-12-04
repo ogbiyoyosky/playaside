@@ -24,8 +24,8 @@ public class JwtService implements IJwtService {
     @Value("${jwt.secret}")
     private String secretKey;
 
-    // Access tokens should be short-lived (15 minutes = 900000ms)
-    private final Long JwtExpirationMs = 900000L; // 15 minutes
+    // Access tokens should be short-lived (default 1 day = 86400000ms)
+    private final Long JwtExpirationMs = 86400000L; // 1 day
 
     
     private final Long LongLivedRefreshTokenExpirationMs = 604800000L; // 7 days

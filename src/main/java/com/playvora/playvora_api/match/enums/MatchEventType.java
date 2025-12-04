@@ -7,5 +7,10 @@ public enum MatchEventType {
     TABLE_TENNIS,
     VOLLEYBALL,
     HOCKEY,
-    RUGBY
+    RUGBY,
+    BADMINTON,
+    SQUASH,
+    PADDLE_TENNIS,
+    BILLIARDS,
+    CRICKET,
 }

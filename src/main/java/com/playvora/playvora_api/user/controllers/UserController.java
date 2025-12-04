@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import com.playvora.playvora_api.common.dto.ApiResponse;
+import com.playvora.playvora_api.community.entities.CommunityMember;
 import com.playvora.playvora_api.match.entities.MatchRegistration;
 import com.playvora.playvora_api.match.repo.MatchRegistrationRepository;
 import com.playvora.playvora_api.user.dtos.RegisterRequest;
@@ -69,6 +70,7 @@ public class UserController {
 
         // Populate registered events map for the current user
         populateRegisteredEvents(user, userResponse);
+        populateRegisteredCommunities(user, userResponse);
 
         return ResponseEntity.ok(ApiResponse.success(userResponse, "User updated successfully"));
     }
@@ -83,7 +85,7 @@ public class UserController {
 
         // Populate registered events map for the current user
         populateRegisteredEvents(user, userResponse);
-
+        populateRegisteredCommunities(user, userResponse);
         return ResponseEntity.ok(ApiResponse.success(userResponse, "User fetched successfully"));
 
 
@@ -107,5 +109,17 @@ public class UserController {
 
         userResponse.setRegisteredEvents(registeredEvents);
     }
+
+    private void populateRegisteredCommunities(User user, UserResponse userResponse) {
+        List<CommunityMember> memberships = userService.getUserCommunities(user.getId());
+        Map<UUID, Boolean> registeredCommunities = new HashMap<>();
+
+        for (CommunityMember membership : memberships) {
+            registeredCommunities.put(membership.getCommunity().getId(), Boolean.TRUE);
+        }
+        userResponse.setRegisteredCommunities(registeredCommunities);
+    }
+
+   
 }
     

@@ -6,14 +6,13 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.playvora.playvora_api.community.mappers.CommunityMapper;
 import com.playvora.playvora_api.match.dtos.MatchEventResponse;
 import com.playvora.playvora_api.match.dtos.TeamResponse;
 import com.playvora.playvora_api.match.entities.Availability;
 import com.playvora.playvora_api.match.entities.Match;
 import com.playvora.playvora_api.match.entities.Team;
 import com.playvora.playvora_api.match.enums.AvailabilityStatus;
-import com.playvora.playvora_api.user.dtos.UserResponse;
-import com.playvora.playvora_api.user.mappers.UserMapper;
 
 public class MatchEventMapper {
 
@@ -22,10 +21,6 @@ public class MatchEventMapper {
     }
 
     public static MatchEventResponse convertToResponse(Match match) {
-        return convertToResponse(match, null);
-    }
-
-    public static MatchEventResponse convertToResponse(Match match, List<Availability> availablePlayersList) {
         List<TeamResponse> teams = match.getTeams() == null
                 ? Collections.emptyList()
                 : match.getTeams().stream()
@@ -33,36 +28,45 @@ public class MatchEventMapper {
                         .collect(Collectors.toList());
 
         List<UUID> draftOrder = parseDraftOrder(match.getManualDraftOrder());
-        Team currentPickingTeam = match.getCurrentPickingTeam();
+        UUID currentPickingTeamId = match.getCurrentPickingTeamId();
 
         String currentPickerName = null;
         UUID currentPickerId = null;
         String currentPickingTeamName = null;
 
-        if (currentPickingTeam != null) {
-            currentPickingTeamName = currentPickingTeam.getName();
-            if (currentPickingTeam.getCaptain() != null) {
-                currentPickerId = currentPickingTeam.getCaptain().getId();
-                String firstName = currentPickingTeam.getCaptain().getFirstName();
-                String lastName = currentPickingTeam.getCaptain().getLastName();
-                StringBuilder nameBuilder = new StringBuilder();
-                if (firstName != null && !firstName.isBlank()) {
-                    nameBuilder.append(firstName.trim());
-                }
-                if (lastName != null && !lastName.isBlank()) {
-                    if (nameBuilder.length() > 0) {
-                        nameBuilder.append(" ");
+        // IMPORTANT: Avoid touching Match.currentPickingTeam directly because it is a LAZY proxy
+        // and WebSocket flows may run without an open Hibernate session. Instead, resolve the
+        // current picking team from the already-loaded teams collection.
+        if (currentPickingTeamId != null && match.getTeams() != null) {
+            Team currentPickingTeam = match.getTeams().stream()
+                    .filter(t -> currentPickingTeamId.equals(t.getId()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (currentPickingTeam != null) {
+                currentPickingTeamName = currentPickingTeam.getName();
+                if (currentPickingTeam.getCaptain() != null) {
+                    currentPickerId = currentPickingTeam.getCaptain().getId();
+                    String firstName = currentPickingTeam.getCaptain().getFirstName();
+                    String lastName = currentPickingTeam.getCaptain().getLastName();
+                    StringBuilder nameBuilder = new StringBuilder();
+                    if (firstName != null && !firstName.isBlank()) {
+                        nameBuilder.append(firstName.trim());
                     }
-                    nameBuilder.append(lastName.trim());
+                    if (lastName != null && !lastName.isBlank()) {
+                        if (nameBuilder.length() > 0) {
+                            nameBuilder.append(" ");
+                        }
+                        nameBuilder.append(lastName.trim());
+                    }
+                    currentPickerName = nameBuilder.length() > 0 ? nameBuilder.toString() : null;
                 }
-                currentPickerName = nameBuilder.length() > 0 ? nameBuilder.toString() : null;
             }
         }
 
         MatchEventResponse response = MatchEventResponse.builder()
                 .id(match.getId())
-                .communityId(match.getCommunity() != null ? match.getCommunity().getId() : null)
-                .communityName(match.getCommunity() != null ? match.getCommunity().getName() : null)
+                .community(CommunityMapper.convertToResponse(match.getCommunity()))
                 .title(match.getTitle())
                 .description(match.getDescription())
                 .type(match.getType())
@@ -99,26 +103,17 @@ public class MatchEventMapper {
 
         List<Availability> availabilities = match.getAvailabilities();
         int totalPlayers = availabilities == null ? 0 : availabilities.size();
+
+        Integer availabilitiesCount = availabilities != null ? availabilities.stream()
+                .filter(a -> a.getStatus() == AvailabilityStatus.AVAILABLE)
+                .collect(Collectors.toList()).size() : 0;
         
         // Use provided available players list or filter from match availabilities
-        List<Availability> availableAvailabilities = availablePlayersList != null 
-                ? availablePlayersList 
-                : (availabilities == null ? Collections.emptyList() :
-                    availabilities.stream()
-                        .filter(availability -> availability.getStatus() == AvailabilityStatus.AVAILABLE)
-                        .collect(Collectors.toList()));
-        
-        int availablePlayersCount = availableAvailabilities.size();
-        
-        // Map available players to UserResponse
-        List<UserResponse> availablePlayersResponse = availableAvailabilities.stream()
-                .map(availability -> UserMapper.convertToResponse(availability.getUser()))
-                .collect(Collectors.toList());
-
+        response.setAvailablePlayers(availabilitiesCount);
         response.setTotalPlayers(totalPlayers);
-        response.setAvailablePlayers(availablePlayersCount);
-        response.setAvailablePlayersList(availablePlayersResponse);
-
+        response.setPlayersAvailability(availabilities != null ? availabilities.stream()
+                .map(PlayerAvialabilityMapper::convertToResponse)
+                .collect(Collectors.toList()) : Collections.emptyList());
         return response;
     }
 

@@ -308,12 +308,11 @@ public class MatchService implements IMatchService {
                 && currentUserRole.isActive()
                 && currentUserRole.getRole() != null
                 && "COMMUNITY_MANAGER".equals(currentUserRole.getRole().getName());
- 
-        
+
 
         if (isCommunityManager) {
-            User currentUser = getCurrentUser();
-            matches = matchRepository.findByCommunityIdAndCreatorId(communityId, currentUser.getId(), pageable);
+            matches = matchRepository.findByCommunityId(communityId, pageable);
+            // matches = matchRepository.findByCommunityIdAndCreatorId(communityId, currentUser.getId(), pageable);
         } else {
             matches = matchRepository.findByCommunityId(communityId, pageable);
         }
@@ -325,7 +324,7 @@ public class MatchService implements IMatchService {
     @Override
     public PaginatedResponse<MatchEventResponse> getUpcomingMatchEvents(int page, int size, String search) {
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime endDate = now.plusMonths(1); // Next 3 months
+        LocalDateTime endDate = now.plusMonths(3); // Next 3 months
         
         Sort sort = Sort.by(Sort.Direction.ASC, "matchDate");
         Pageable pageable = PageRequest.of(page, size, sort);
@@ -339,12 +338,11 @@ public class MatchService implements IMatchService {
                 && roleContext.isActive()
                 && roleContext.getRole() != null
                 && "COMMUNITY_MANAGER".equals(roleContext.getRole().getName());
-
+        log.info("isCommunityManager: {}", isCommunityManager);
         if (isCommunityManager) {
-            User currentUser = getCurrentUser();
             // For community managers, fetch upcoming matches they created within this community
-            matches = matchRepository.searchUpcomingMatchesByCommunityIdAndCreatorId(
-                    communityId, currentUser.getId(), now, endDate, pageable);
+            matches = matchRepository.searchUpcomingMatchesByCommunityId(
+                    communityId, now, endDate, pageable);
         } else {
             if (searchFilter == null) {
                 matches = matchRepository.findByDateRange(now, endDate, pageable);
@@ -648,6 +646,7 @@ public class MatchService implements IMatchService {
     @Transactional
     public void cancelMatch(UUID matchId) {
         Match match = getMatchEventById(matchId);
+        User currentUser = getCurrentUser();
         
         if (match.getStatus() == MatchStatus.IN_PROGRESS) {
             throw new BadRequestException("Cannot cancel match that is in progress");
@@ -676,6 +675,9 @@ public class MatchService implements IMatchService {
                     userIds.add(availability.getUser().getId());
                 }
             }
+
+            // Don't notify the user who initiated the cancellation
+            userIds.remove(currentUser.getId());
             
             if (!userIds.isEmpty()) {
                 Map<String, Object> data = new HashMap<>();
@@ -699,6 +701,7 @@ public class MatchService implements IMatchService {
     @Transactional
     public void startMatch(UUID matchId) {
         Match match = getMatchEventById(matchId);
+        User currentUser = getCurrentUser();
         
         if (match.getStatus() != MatchStatus.TEAMS_SELECTED) {
             throw new BadRequestException("Match must have teams selected before starting");
@@ -717,6 +720,9 @@ public class MatchService implements IMatchService {
                     userIds.add(player.getUser().getId());
                 }
             }
+
+            // Don't notify the user who initiated the start
+            userIds.remove(currentUser.getId());
             
             if (!userIds.isEmpty()) {
                 Map<String, Object> data = new HashMap<>();
@@ -740,6 +746,7 @@ public class MatchService implements IMatchService {
     @Transactional
     public void completeMatch(UUID matchId) {
         Match match = getMatchEventById(matchId);
+        User currentUser = getCurrentUser();
         
         if (match.getStatus() != MatchStatus.IN_PROGRESS) {
             throw new BadRequestException("Match must be in progress to complete");
@@ -758,6 +765,9 @@ public class MatchService implements IMatchService {
                     userIds.add(player.getUser().getId());
                 }
             }
+
+            // Don't notify the user who initiated the completion
+            userIds.remove(currentUser.getId());
             
             if (!userIds.isEmpty()) {
                 Map<String, Object> data = new HashMap<>();
@@ -833,6 +843,27 @@ public class MatchService implements IMatchService {
             if (teamCaptain != null) {
                 savedTeam.setCaptain(teamCaptain);
                 teamRepository.save(savedTeam);
+
+                // Send push notification to the auto-selected captain
+                try {
+                    Map<String, Object> data = new HashMap<>();
+                    data.put("type", "CAPTAIN_ASSIGNED");
+                    data.put("matchId", match.getId());
+                    data.put("teamId", savedTeam.getId());
+                    data.put("matchTitle", match.getTitle());
+                    data.put("teamName", savedTeam.getName());
+
+                    pushNotificationService.sendPushNotificationToUser(
+                            teamCaptain.getId().toString(),
+                            "You're Now a Captain!",
+                            "You have been assigned as captain of " + savedTeam.getName()
+                                    + " for " + match.getTitle(),
+                            data
+                    );
+                } catch (Exception e) {
+                    log.error("Error sending push notification for auto captain assignment", e);
+                    // Don't fail team generation if notification fails
+                }
             }
         }
         
@@ -909,6 +940,27 @@ public class MatchService implements IMatchService {
 
             captainAvailability.setStatus(AvailabilityStatus.SELECTED);
             availabilityRepository.save(captainAvailability);
+
+            // Send push notification to the manually-selected captain
+            try {
+                Map<String, Object> data = new HashMap<>();
+                data.put("type", "CAPTAIN_ASSIGNED");
+                data.put("matchId", match.getId());
+                data.put("teamId", savedTeam.getId());
+                data.put("matchTitle", match.getTitle());
+                data.put("teamName", savedTeam.getName());
+
+                pushNotificationService.sendPushNotificationToUser(
+                        captain.getId().toString(),
+                        "You're Now a Captain!",
+                        "You have been assigned as captain of " + savedTeam.getName()
+                                + " for " + match.getTitle(),
+                        data
+                );
+            } catch (Exception e) {
+                log.error("Error sending push notification for manual captain assignment", e);
+                // Don't fail team generation if notification fails
+            }
         }
 
         if (!draftOrder.isEmpty()) {
@@ -1259,13 +1311,17 @@ public class MatchService implements IMatchService {
             matchRepository.save(match);
         }
 
-        // Add player to availability
-        Availability availability = Availability.builder()
-                .match(match)
-                .user(currentUser)
-                .status(AvailabilityStatus.NOT_AVAILABLE)
-                .build();
-        availabilityRepository.save(availability);
+        // Add player to availability if they don't already have a record for this match.
+        // This avoids violating the unique (match_id, user_id) constraint on the availabilities table.
+        Optional<Availability> existingAvailability = availabilityRepository.findByMatchIdAndUserId(matchId, currentUser.getId());
+        if (existingAvailability.isEmpty()) {
+            Availability availability = Availability.builder()
+                    .match(match)
+                    .user(currentUser)
+                    .status(AvailabilityStatus.NOT_AVAILABLE)
+                    .build();
+            availabilityRepository.save(availability);
+        }
 
         // Send push notification to all players that the user has joined the match
         List<User> players = matchRegistrationRepository.findUsersByMatchId(matchId);
@@ -1279,12 +1335,15 @@ public class MatchService implements IMatchService {
             data.put("joiningUserId", currentUser.getId());
 
             for (User player : players) {
-                pushNotificationService.sendPushNotificationToUser(
-                        player.getId().toString(),
-                        "Player Joined Match",
-                        joiningUserName.trim() + " has joined " + match.getTitle(),
-                        data
-                );
+                // Don't send a push notification to the user who initiated the join
+                if (!player.getId().equals(currentUser.getId())) {
+                    pushNotificationService.sendPushNotificationToUser(
+                            player.getId().toString(),
+                            "Player Joined Match",
+                            joiningUserName.trim() + " has joined " + match.getTitle(),
+                            data
+                    );
+                }
             }
         }
     }

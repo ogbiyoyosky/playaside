@@ -19,6 +19,7 @@ import com.playvora.playvora_api.match.repo.AvailabilityRepository;
 import com.playvora.playvora_api.match.repo.ChatMessageRepository;
 import com.playvora.playvora_api.match.repo.MatchRepository;
 import com.playvora.playvora_api.match.repo.TeamRepository;
+import com.playvora.playvora_api.match.repo.MatchRegistrationRepository;
 import com.playvora.playvora_api.match.services.IMatchService;
 import com.playvora.playvora_api.match.mappers.MatchEventMapper;
 import com.playvora.playvora_api.user.entities.User;
@@ -56,6 +57,7 @@ public class MatchEventController {
     private final TeamRepository teamRepository;
     private final MatchRepository matchRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final MatchRegistrationRepository matchRegistrationRepository;
 
 
     @PostMapping
@@ -106,12 +108,7 @@ public class MatchEventController {
         var availabilities = availabilityRepository.findByMatchIdWithUser(id);
         match.setAvailabilities(availabilities);
         
-        // Get available players (status = AVAILABLE) - these are players not yet selected
-        var availablePlayers = availabilityRepository.findAvailablePlayers(id);
-        
-        log.debug("Loaded match {} with {} teams and {} available players", id, teams.size(), availablePlayers.size());
-        
-        MatchEventResponse response = MatchEventMapper.convertToResponse(match, availablePlayers);
+        MatchEventResponse response = MatchEventMapper.convertToResponse(match);
         return ResponseEntity.ok(ApiResponse.success(response, "Match retrieved successfully"));
     }
 
@@ -199,8 +196,7 @@ public class MatchEventController {
         // Load match with Community eagerly to avoid lazy loading issues
         Match match = matchRepository.findByIdWithCommunity(matchId)
                 .orElseThrow(() -> new BadRequestException("Match not found"));
-        var availablePlayers = availabilityRepository.findAvailablePlayers(matchId);
-        MatchEventResponse response = MatchEventMapper.convertToResponse(match, availablePlayers);
+        MatchEventResponse response = MatchEventMapper.convertToResponse(match);
         return ResponseEntity.ok(ApiResponse.success(response, "Player selected successfully"));
     }
 
@@ -261,8 +257,7 @@ public class MatchEventController {
             
             // Get updated match data with available players
             var match = matchService.getMatchEventById(matchId);
-            var availablePlayers = availabilityRepository.findAvailablePlayers(matchId);
-            var matchResponse = MatchEventMapper.convertToResponse(match, availablePlayers);
+            var matchResponse = MatchEventMapper.convertToResponse(match);
             var selectedUser = userRepository.findById(userId)
                     .orElseThrow(() -> new BadRequestException("User not found"));
             
@@ -304,8 +299,7 @@ public class MatchEventController {
             
             // Get updated match data with available players
             var match = matchService.getMatchEventById(matchId);
-            var availablePlayers = availabilityRepository.findAvailablePlayers(matchId);
-            var matchResponse = MatchEventMapper.convertToResponse(match, availablePlayers);
+            var matchResponse = MatchEventMapper.convertToResponse(match);
             var removedUser = userRepository.findById(userId)
                     .orElseThrow(() -> new BadRequestException("User not found"));
             
@@ -347,8 +341,7 @@ public class MatchEventController {
             
             // Get updated match data with available players
             var match = matchService.getMatchEventById(matchId);
-            var availablePlayers = availabilityRepository.findAvailablePlayers(matchId);
-            var matchResponse = MatchEventMapper.convertToResponse(match, availablePlayers);
+            var matchResponse = MatchEventMapper.convertToResponse(match);
             var captainUser = userRepository.findById(userId)
                     .orElseThrow(() -> new BadRequestException("User not found"));
             
@@ -388,9 +381,8 @@ public class MatchEventController {
             @Parameter(description = "Match ID") @PathVariable UUID matchId) {
             Match match = matchService.generateTeams(matchId);
             
-            // Get available players and create response
-            var availablePlayers = availabilityRepository.findAvailablePlayers(matchId);
-            MatchEventResponse message = MatchEventMapper.convertToResponse(match, availablePlayers);
+                // Get available players and create response
+            MatchEventResponse message = MatchEventMapper.convertToResponse(match);
             return ResponseEntity.ok(ApiResponse.success(message, "Teams generated successfully"));
         
     }
@@ -479,8 +471,8 @@ public class MatchEventController {
             matchRepository.findById(matchId)
                     .orElseThrow(() -> new BadRequestException("Match not found"));
             
-            // Verify user is a participant in this match
-            boolean isParticipant = availabilityRepository.existsByMatchIdAndUserId(matchId, currentUser.getId());
+            // Verify user is a participant in this match (has registered)
+            boolean isParticipant = matchRegistrationRepository.existsByMatchIdAndUserId(matchId, currentUser.getId());
             if (!isParticipant) {
                 throw new BadRequestException("You must be a participant in this match to view chat messages");
             }

@@ -421,8 +421,8 @@
             <input type="text" id="wsUrl" value="http://localhost:8080/ws" placeholder="ws://localhost:8080/ws">
         </div>
         <div class="form-group">
-            <label for="matchId">Match ID:</label>
-            <input type="number" id="matchId" placeholder="Enter Match ID" required>
+            <label for="matchId">Match ID (UUID):</label>
+            <input type="text" id="matchId" placeholder="Enter Match ID (UUID)" required>
         </div>
         <div class="form-group">
             <label for="jwtToken">JWT Token (optional, for authenticated operations):</label>
@@ -432,15 +432,15 @@
             </small>
         </div>
         <div class="form-group">
-            <label for="userId">Your User ID (optional if JWT provided):</label>
-            <input type="number" id="userId" placeholder="Enter Your User ID (auto-detected if JWT provided)">
+            <label for="userId">Your User ID (UUID, optional if JWT provided):</label>
+            <input type="text" id="userId" placeholder="Enter Your User ID (UUID, auto-detected if JWT provided)">
             <small style="color: #6b7280; font-size: 12px; margin-top: 5px; display: block;">
                 Will be auto-detected from JWT token if provided. Otherwise, enter manually.
             </small>
         </div>
         <div class="form-group">
-            <label for="teamId">Your Team ID (optional, auto-detected if JWT provided):</label>
-            <input type="number" id="teamId" placeholder="Enter Team ID (auto-detected if JWT provided)">
+            <label for="teamId">Your Team ID (UUID, optional, auto-detected if JWT provided):</label>
+            <input type="text" id="teamId" placeholder="Enter Team ID (UUID, auto-detected if JWT provided)">
             <small style="color: #6b7280; font-size: 12px; margin-top: 5px; display: block;">
                 Will be auto-detected from match data if JWT token is provided. Otherwise, enter manually.
             </small>
@@ -512,20 +512,20 @@
                 return;
             }
 
-            matchId = parseInt(matchIdInput);
+            matchId = matchIdInput.trim();
             jwtToken = jwtTokenInput ? jwtTokenInput.trim() : null;
             
             // Only use manual userId/teamId if JWT token is not provided
             // If JWT is provided, we'll auto-detect from API
             if (!jwtToken) {
-                userId = userIdInput ? parseInt(userIdInput) : null;
-                teamId = teamIdInput ? parseInt(teamIdInput) : null;
+                userId = userIdInput ? userIdInput.trim() : null;
+                teamId = teamIdInput ? teamIdInput.trim() : null;
                 console.log('Using manual userId and teamId (no JWT):', { userId, teamId });
             } else {
                 // JWT provided - userId and teamId will be auto-detected
                 // But still allow manual override if provided
-                userId = userIdInput ? parseInt(userIdInput) : null;
-                teamId = teamIdInput ? parseInt(teamIdInput) : null;
+                userId = userIdInput ? userIdInput.trim() : null;
+                teamId = teamIdInput ? teamIdInput.trim() : null;
                 console.log('JWT provided - will auto-detect userId and teamId. Manual values:', { userId, teamId });
             }
 
@@ -547,6 +547,15 @@
             // Create SockJS connection with token in query parameter
             const socket = new SockJS(finalWsUrl);
             stompClient = Stomp.over(socket);
+
+            // Configure STOMP heartbeats (client → server and server → client) every 10 seconds.
+            // Values are in milliseconds; 0 disables heartbeats in that direction.
+            // When connected, the broker and this client exchange heartbeat frames roughly every
+            // 10 seconds of inactivity. You can observe these on the client side via the STOMP
+            // debug logger below (they will show up as "STOMP Debug" messages in the browser
+            // console when the WebSocket connection is open and at least one subscription exists).
+            stompClient.heartbeat.outgoing = 10000; // client sends heartbeats
+            stompClient.heartbeat.incoming = 10000; // client expects heartbeats
 
             // Enable debug logging to see STOMP messages
             stompClient.debug = function(str) {
@@ -619,7 +628,7 @@
                     updateConnectionStatus(false);
                     showNotification('Connection failed. Please check your WebSocket URL and authentication.', 'error');
                 }
-            )();
+            );
             
             // Also set up error handler
             stompClient.onerror = function(error) {
@@ -668,15 +677,15 @@
                 if (data && data.success && data.data) {
                     const currentUser = data.data;
                     // Auto-populate userId if not already set or if it differs
-                    const apiUserId = currentUser.id ? Number(currentUser.id) : null;
+                    const apiUserId = currentUser.id ? String(currentUser.id) : null;
                     if (apiUserId) {
                         // Always update userId from API to ensure accuracy
-                        const previousUserId = userId;
+                        const previousUserId = userId ? String(userId) : null;
                         userId = apiUserId;
                         console.log('Auto-populated userId from API:', userId, '(previous:', previousUserId, ')');
                         
                         // Show notification only if userId changed or was not set
-                        if (!previousUserId || Number(previousUserId) !== apiUserId) {
+                        if (!previousUserId || previousUserId !== apiUserId) {
                             const userName = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || currentUser.email || 'User';
                             showNotification(`Logged in as: ${userName} (ID: ${userId})`, 'success');
                         }
@@ -713,16 +722,16 @@
                 return;
             }
             
-            // Normalize userId to number for comparison
-            const normalizedUserId = Number(detectedUserId);
+            // Normalize userId to string for comparison
+            const normalizedUserId = detectedUserId ? String(detectedUserId) : null;
             
             // Find which team the user belongs to
             for (const team of teams) {
-                const captainId = team.captain?.id ? Number(team.captain.id) : null;
+                const captainId = team.captain?.id ? String(team.captain.id) : null;
                 if (team.captain && captainId === normalizedUserId) {
                     // User is the captain of this team
-                    const normalizedTeamId = Number(team.id);
-                    const currentTeamId = teamId ? Number(teamId) : null;
+                    const normalizedTeamId = team.id ? String(team.id) : null;
+                    const currentTeamId = teamId ? String(teamId) : null;
                     if (!teamId || currentTeamId !== normalizedTeamId) {
                         teamId = normalizedTeamId;
                         console.log('Auto-detected teamId (as captain):', teamId);
@@ -738,11 +747,11 @@
                 // Check if user is a player in this team
                 if (team.players && Array.isArray(team.players)) {
                     for (const player of team.players) {
-                        const playerUserId = player.user?.id ? Number(player.user.id) : null;
+                        const playerUserId = player.user?.id ? String(player.user.id) : null;
                         if (player.user && playerUserId === normalizedUserId) {
                             // User is a player in this team
-                            const normalizedTeamId = Number(team.id);
-                            if (!teamId || Number(teamId) !== normalizedTeamId) {
+                            const normalizedTeamId = team.id ? String(team.id) : null;
+                            if (!teamId || String(teamId) !== normalizedTeamId) {
                                 teamId = normalizedTeamId;
                                 console.log('Auto-detected teamId (as player):', teamId);
                                 showNotification(`Auto-detected team: ${team.name} (ID: ${teamId})`, 'info');
@@ -1148,9 +1157,10 @@
                 const disabled = !canSelect;
                 const disabledAttr = disabled ? 'disabled' : '';
                 const disabledClass = disabled ? 'disabled' : '';
+                const playerId = player.id ? String(player.id) : '';
                 
                 return `
-                    <div class="player-card" data-user-id="${player.id}">
+                    <div class="player-card" data-user-id="${playerId}">
                         <div class="player-info">
                             <div class="player-avatar" style="background-image: url('${player.profilePictureUrl || ''}'); background-size: cover;">
                                 ${!player.profilePictureUrl ? initials : ''}
@@ -1161,7 +1171,7 @@
                             </div>
                         </div>
                         <button class="select-btn ${disabledClass}" 
-                                onclick="selectPlayer(${player.id})"
+                                onclick="selectPlayer('${playerId}')"
                                 ${disabledAttr}
                                 title="${disabled ? 'Not your turn or you are not the captain' : 'Select player'}">
                             Select
@@ -1217,18 +1227,16 @@
             
             // Build HTML for teams
             const teamsHTML = teams.map(team => {
-                const isCurrentTurn = team.id === currentPickingTeamId;
+                // Normalize team ID for comparison as strings (UUIDs)
+                const normalizedTeamId = team.id ? String(team.id) : null;
+                const normalizedCurrentPickingTeamId = currentPickingTeamId ? String(currentPickingTeamId) : null;
+                const isCurrentTurn = normalizedTeamId && normalizedCurrentPickingTeamId && normalizedTeamId === normalizedCurrentPickingTeamId;
                 const teamClass = isCurrentTurn ? 'team-card current-turn' : 'team-card';
                 
-                // Normalize team ID for comparison
-                const normalizedTeamId = team.id ? Number(team.id) : null;
-                const normalizedCurrentPickingTeamId = currentPickingTeamId ? Number(currentPickingTeamId) : null;
-                const isCurrentTurnNormalized = normalizedTeamId === normalizedCurrentPickingTeamId;
-                
-                console.log(`Team ${team.id} (${team.name}) - isCurrentTurn: ${isCurrentTurnNormalized}, currentPickingTeamId: ${currentPickingTeamId}`);
+                console.log(`Team ${team.id} (${team.name}) - isCurrentTurn: ${isCurrentTurn}, currentPickingTeamId: ${currentPickingTeamId}`);
                 
                 return `
-                    <div class="${isCurrentTurnNormalized ? 'team-card current-turn' : 'team-card'}" data-team-id="${team.id}">
+                    <div class="${isCurrentTurn ? 'team-card current-turn' : 'team-card'}" data-team-id="${team.id}">
                         <div class="team-header">
                             <div>
                                 <div class="team-name">${team.name || 'Team'}</div>
@@ -1277,11 +1285,11 @@
             console.log('Checking if captain - teams:', teams, 'teamId:', teamId, 'userId:', userId);
             
             if (teams && teamId !== null && teamId !== undefined && userId !== null && userId !== undefined) {
-                // Normalize IDs to numbers for comparison
-                const normalizedTeamId = Number(teamId);
-                const normalizedUserId = Number(userId);
+                // Normalize IDs to strings for comparison (UUIDs)
+                const normalizedTeamId = String(teamId);
+                const normalizedUserId = String(userId);
                 
-                const userTeam = teams.find(t => Number(t.id) === normalizedTeamId);
+                const userTeam = teams.find(t => String(t.id) === normalizedTeamId);
                 console.log('User team found:', userTeam);
                 
                 if (userTeam) {
@@ -1289,8 +1297,8 @@
                     console.log('Team captain ID:', userTeam.captain?.id);
                     console.log('Current user ID:', normalizedUserId);
                     
-                    // Compare IDs (handle both number and string types)
-                    const captainId = userTeam.captain?.id ? Number(userTeam.captain.id) : null;
+                    // Compare IDs as strings
+                    const captainId = userTeam.captain?.id ? String(userTeam.captain.id) : null;
                     const idsMatch = captainId === normalizedUserId;
                     console.log('IDs match:', idsMatch, '(Captain ID:', captainId, ', User ID:', normalizedUserId, ')');
                     
@@ -1354,11 +1362,11 @@
                 console.log('Cannot select: No team ID');
                 return false;
             }
-            // Normalize IDs to numbers for comparison
-            const currentPickingTeamId = currentMatchData.currentPickingTeamId ? Number(currentMatchData.currentPickingTeamId) : null;
-            const normalizedTeamId = teamId ? Number(teamId) : null;
+            // Normalize IDs to strings for comparison (UUIDs)
+            const currentPickingTeamId = currentMatchData.currentPickingTeamId ? String(currentMatchData.currentPickingTeamId) : null;
+            const normalizedTeamId = teamId ? String(teamId) : null;
             
-            if (currentPickingTeamId !== normalizedTeamId) {
+            if (!currentPickingTeamId || currentPickingTeamId !== normalizedTeamId) {
                 console.log('Cannot select: Not your turn. Current picking team:', currentPickingTeamId, 'Your team:', normalizedTeamId);
                 return false;
             }
@@ -1401,9 +1409,9 @@
                 } else if (!teamId) {
                     errorMsg += 'No team ID provided.';
                 } else {
-                    const currentPickingTeamId = currentMatchData.currentPickingTeamId ? Number(currentMatchData.currentPickingTeamId) : null;
-                    const normalizedTeamId = teamId ? Number(teamId) : null;
-                    if (currentPickingTeamId !== normalizedTeamId) {
+                    const currentPickingTeamId = currentMatchData.currentPickingTeamId ? String(currentMatchData.currentPickingTeamId) : null;
+                    const normalizedTeamId = teamId ? String(teamId) : null;
+                    if (!currentPickingTeamId || currentPickingTeamId !== normalizedTeamId) {
                         errorMsg += `Not your turn. Current picking team: ${currentPickingTeamId}, Your team: ${normalizedTeamId}`;
                     }
                 }

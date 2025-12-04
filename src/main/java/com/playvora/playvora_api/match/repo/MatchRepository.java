@@ -184,4 +184,13 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
                                                                @Param("creatorId") UUID creatorId,
                                                                @Param("startDate") LocalDateTime startDate,
                                                                @Param("endDate") LocalDateTime endDate, Pageable pageable);
+
+    @Query("""
+        SELECT m FROM Match m
+        WHERE m.community.id = :communityId
+          AND m.matchDate >= :startDate AND m.matchDate <= :endDate
+    """)
+    Page<Match> searchUpcomingMatchesByCommunityId(@Param("communityId") UUID communityId,
+                                                   @Param("startDate") LocalDateTime startDate,
+                                                   @Param("endDate") LocalDateTime endDate, Pageable pageable);
 }

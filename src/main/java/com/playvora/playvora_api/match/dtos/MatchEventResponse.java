@@ -3,8 +3,11 @@ package com.playvora.playvora_api.match.dtos;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
+import com.playvora.playvora_api.community.dtos.CommunityResponse;
+import com.playvora.playvora_api.match.enums.AvailabilityStatus;
 import com.playvora.playvora_api.match.enums.MatchStatus;
 import com.playvora.playvora_api.user.dtos.UserResponse;
 import lombok.AllArgsConstructor;
@@ -19,8 +22,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class MatchEventResponse {
     private UUID id;
-    private UUID communityId;
-    private String communityName;
+    private CommunityResponse community;
     private String title;
     private String description;
     private LocalDateTime matchDate;
@@ -34,7 +36,7 @@ public class MatchEventResponse {
     private String currency;
     private LocalDateTime updatedAt;
     private List<TeamResponse> teams;
-    private List<UserResponse> availablePlayersList;
+    private List<PlayerAvailablibityResponse> playersAvailability;
     private Boolean draftInProgress;
     private UUID currentPickingTeamId;
     private String currentPickingTeamName;

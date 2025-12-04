@@ -27,8 +27,7 @@ public class CreateMatchRequest {
     @Size(max = 255, message = "Match title must not exceed 255 characters")
     private String title;
 
-    @NotBlank(message = "Match type is required")
-
+    @NotBlank(message = "Description is required")
     @Size(max = 1000, message = "Description must not exceed 1000 characters")
     private String description;
 
@@ -89,7 +88,7 @@ public class CreateMatchRequest {
     @NotNull(message = "Gender is required")
     private Gender gender;
 
-    @NotBlank(message = "Match type is required")
+    @NotNull(message = "Match type is required")
     @Enumerated(EnumType.STRING)
     private MatchEventType type;
 }

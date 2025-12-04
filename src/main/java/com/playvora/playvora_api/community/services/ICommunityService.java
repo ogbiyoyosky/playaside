@@ -27,4 +27,6 @@ public interface ICommunityService {
     String uploadCommunityBanner(UUID communityId, MultipartFile file);
     void assignRoleToMember(UUID communityId, AssignRoleRequest request);
     List<String> getCommunitiesMetadata();
+    Long getCommunityMemberCount(UUID id);
+    boolean isUserMemberOfCommunity(UUID userId, UUID communityId);
 }

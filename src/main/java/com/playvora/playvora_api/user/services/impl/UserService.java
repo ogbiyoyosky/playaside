@@ -1,14 +1,10 @@
 package com.playvora.playvora_api.user.services.impl;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.playvora.playvora_api.app.AppUserDetail;
 import com.playvora.playvora_api.auth.dtos.AuthProviderAttribute;
 import com.playvora.playvora_api.common.exception.BadRequestException;
+import com.playvora.playvora_api.community.entities.CommunityMember;
+import com.playvora.playvora_api.community.repo.CommunityMemberRepository;
 import com.playvora.playvora_api.user.dtos.RegisterRequest;
 import com.playvora.playvora_api.user.dtos.UpdateRequest;
 import com.playvora.playvora_api.user.entities.Role;
@@ -19,8 +15,15 @@ import com.playvora.playvora_api.user.repo.UserRepository;
 import com.playvora.playvora_api.user.repo.UserRoleRepository;
 import com.playvora.playvora_api.user.services.IUserService;
 import com.playvora.playvora_api.wallet.services.IWalletService;
-
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -31,6 +34,7 @@ public class UserService implements IUserService {
     private final UserRoleRepository userRoleRepository;
     private final PasswordEncoder passwordEncoder;
     private final IWalletService walletService;
+    private final CommunityMemberRepository communityMemberRepository;
 
     @Override
     public User createUser(RegisterRequest registerRequest) {
@@ -162,4 +166,10 @@ public class UserService implements IUserService {
 
         return savedUser;
     }
+
+    @Override
+    public List<CommunityMember> getUserCommunities(UUID userId) {
+        return communityMemberRepository.findActiveMembershipsByUserId(userId);
+    }
+    
 }

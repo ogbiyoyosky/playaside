@@ -40,4 +40,5 @@ public class UserResponse {
      * This is typically populated per-context (e.g. for a specific list of matches).
      */
     private Map<UUID, Boolean> registeredEvents;
+    private Map<UUID, Boolean> registeredCommunities;
 }

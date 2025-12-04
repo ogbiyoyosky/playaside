@@ -15,7 +15,12 @@ public interface CommunityMemberRepository extends JpaRepository<CommunityMember
     
     Optional<CommunityMember> findByCommunityIdAndUserId(UUID communityId, UUID userId);
     
-    boolean existsByCommunityIdAndUserIdAndIsActiveTrue(UUID communityId, UUID userId);
+    @Query("SELECT CASE WHEN COUNT(cm) > 0 THEN true ELSE false END " +
+           "FROM CommunityMember cm " +
+           "WHERE cm.community.id = :communityId " +
+           "AND cm.user.id = :userId " +
+           "AND cm.isActive = true")
+    boolean existsByCommunityIdAndUserIdAndIsActiveTrue(@Param("communityId") UUID communityId, @Param("userId") UUID userId);
     
     @Query("SELECT cm FROM CommunityMember cm WHERE cm.user.id = :userId AND cm.isActive = true")
     List<CommunityMember> findActiveMembershipsByUserId(@Param("userId") UUID userId);

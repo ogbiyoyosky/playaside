@@ -7,6 +7,7 @@ import com.playvora.playvora_api.community.dtos.CommunityResponse;
 import com.playvora.playvora_api.community.dtos.CreateCommunityRequest;
 import com.playvora.playvora_api.community.dtos.UpdateCommunityRequest;
 import com.playvora.playvora_api.community.entities.Community;
+import com.playvora.playvora_api.community.mappers.CommunityMapper;
 import com.playvora.playvora_api.community.services.ICommunityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -41,7 +42,9 @@ public class CommunityController {
     public ResponseEntity<ApiResponse<CommunityResponse>> getCommunityById(
             @Parameter(description = "Community ID") @PathVariable UUID id) {
         Community community = communityService.getCommunityById(id);
-        CommunityResponse response = convertToResponse(community);
+        Long memberCount = communityService.getCommunityMemberCount(id);
+        boolean isMember = communityService.isUserMember(id);
+        CommunityResponse response = CommunityMapper.convertToResponse(community, memberCount, isMember);
         return ResponseEntity.ok(ApiResponse.success(response, "Community retrieved successfully"));
     }
 
@@ -51,7 +54,7 @@ public class CommunityController {
     public ResponseEntity<ApiResponse<CommunityResponse>> getCommunityByIdMetadata(
             @Parameter(description = "Community ID") @PathVariable UUID id) {
         Community community = communityService.getCommunityById(id);
-        CommunityResponse response = convertToResponse(community);
+        CommunityResponse response = CommunityMapper.convertToResponse(community);
         return ResponseEntity.ok(ApiResponse.success(response, "Community retrieved successfully"));
     }
 
@@ -142,24 +145,4 @@ public class CommunityController {
         return ResponseEntity.ok(ApiResponse.success(null, "Role assigned successfully"));
     }
 
-    private CommunityResponse convertToResponse(Community community) {
-        // This is a simplified version - in a real implementation, you might want to
-        // inject the service or use a mapper to get the full response with member count
-        return CommunityResponse.builder()
-                .id(community.getId())
-                .name(community.getName())
-                .description(community.getDescription())
-                .logoUrl(community.getLogoUrl())
-                .bannerUrl(community.getBannerUrl())
-                .address(community.getAddress())
-                .city(community.getCity())
-                .province(community.getProvince())
-                .country(community.getCountry())
-                .postCode(community.getPostCode())
-                .latitude(community.getLatitude())
-                .longitude(community.getLongitude())
-                .createdAt(community.getCreatedAt())
-                .updatedAt(community.getUpdatedAt())
-                .build();
-    }
 }

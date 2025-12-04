@@ -26,6 +26,7 @@ public class CommunityResponse {
     private String postCode;
     private BigDecimal latitude;
     private BigDecimal longitude;
+    private UUID createdById;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Long memberCount;
