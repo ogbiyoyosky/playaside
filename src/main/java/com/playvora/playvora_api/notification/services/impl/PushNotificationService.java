@@ -104,7 +104,7 @@ public class PushNotificationService implements IPushNotificationService {
                     .map(token -> {
                         Map<String, Object> message = new HashMap<>();
                         message.put("to", token);
-                        message.put("sound", "default");
+                        message.put("sound", "whistle.wav");
                         message.put("priority", "high"); // High priority for maximum alertness
                         message.put("title", title);
                         message.put("body", body);
@@ -118,7 +118,7 @@ public class PushNotificationService implements IPushNotificationService {
                         
                         // iOS-specific settings
                         Map<String, Object> iosConfig = new HashMap<>();
-                        iosConfig.put("sound", "default");
+                        iosConfig.put("sound", "whistle.wav");
                         iosConfig.put("badge", 1);
                         message.put("ios", iosConfig);
                         

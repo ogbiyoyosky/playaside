@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Data
@@ -23,13 +23,13 @@ public class SubscriptionResponse {
     private BigDecimal amount;
     private String currency;
     private String billingCycle;
-    private LocalDateTime trialStartDate;
-    private LocalDateTime trialEndDate;
-    private LocalDateTime currentPeriodStart;
-    private LocalDateTime currentPeriodEnd;
-    private LocalDateTime nextBillingDate;
-    private LocalDateTime canceledAt;
-    private LocalDateTime createdAt;
+    private OffsetDateTime trialStartDate;
+    private OffsetDateTime trialEndDate;
+    private OffsetDateTime currentPeriodStart;
+    private OffsetDateTime currentPeriodEnd;
+    private OffsetDateTime nextBillingDate;
+    private OffsetDateTime canceledAt;
+    private OffsetDateTime createdAt;
     private boolean isInTrial;
     private boolean isActive;
 }

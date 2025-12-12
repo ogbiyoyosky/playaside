@@ -28,19 +28,29 @@ import com.playvora.playvora_api.user.entities.UserRole;
 import com.playvora.playvora_api.user.repo.UserRepository;
 import com.playvora.playvora_api.user.repo.UserRoleRepository;
 import com.playvora.playvora_api.community.repo.CommunityMemberRepository;
+import com.playvora.playvora_api.payment.entities.EventBooking;
+import com.playvora.playvora_api.payment.repo.EventBookingRepository;
+import com.playvora.playvora_api.payment.services.ITransactionService;
+import com.playvora.playvora_api.wallet.entities.Wallet;
+import com.playvora.playvora_api.wallet.repo.WalletRepository;
+import com.playvora.playvora_api.wallet.services.IWalletService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.playvora.playvora_api.match.mappers.MatchEventMapper;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -60,6 +70,10 @@ public class MatchService implements IMatchService {
     private final CommunityMemberRepository communityMemberRepository;
     private final PaymentRepository paymentRepository;
     private final MatchRegistrationRepository matchRegistrationRepository;
+    private final EventBookingRepository eventBookingRepository;
+    private final IWalletService walletService;
+    private final ITransactionService transactionService;
+    private final WalletRepository walletRepository;
 
     @Override
     @Transactional
@@ -76,7 +90,7 @@ public class MatchService implements IMatchService {
             throw new BadRequestException("Match date must be after registration deadline");
         }
         
-        if (request.getRegistrationDeadline().isBefore(LocalDateTime.now())) {
+        if (request.getRegistrationDeadline().isBefore(OffsetDateTime.now())) {
             throw new BadRequestException("Registration deadline must be in the future");
         }
 
@@ -98,7 +112,7 @@ public class MatchService implements IMatchService {
                 .pricePerPlayer(request.getPricePerPlayer())
                 .isPaidEvent(request.getIsPaidEvent())
                 .isRefundable(request.getIsRefundable())
-                .maxPlayers(request.getMaxPlayers())
+                .maxPlayers(request.getMaxPlayers().orElse(null))
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
                 .address(request.getAddress())
@@ -194,7 +208,9 @@ public class MatchService implements IMatchService {
             match.setIsRefundable(request.getIsRefundable().orElse(match.getIsRefundable()));
         }
         if (request.getMaxPlayers().isPresent()) {
-            match.setMaxPlayers(request.getMaxPlayers().orElse(match.getMaxPlayers()));
+            match.setMaxPlayers(request.getMaxPlayers().get());
+        } else {
+            match.setMaxPlayers(null);
         }
         if (request.getLatitude().isPresent()) {
             match.setLatitude(request.getLatitude().orElse(match.getLatitude()));
@@ -323,8 +339,8 @@ public class MatchService implements IMatchService {
 
     @Override
     public PaginatedResponse<MatchEventResponse> getUpcomingMatchEvents(int page, int size, String search) {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime endDate = now.plusMonths(3); // Next 3 months
+        OffsetDateTime now = OffsetDateTime.now();
+        OffsetDateTime endDate = now.plusMonths(3); // Next 3 months
         
         Sort sort = Sort.by(Sort.Direction.ASC, "matchDate");
         Pageable pageable = PageRequest.of(page, size, sort);
@@ -379,7 +395,7 @@ public class MatchService implements IMatchService {
         Match match = getMatchEventById(matchId);
         
         // Check if registration is still open
-        if (LocalDateTime.now().isAfter(match.getRegistrationDeadline())) {
+        if (OffsetDateTime.now().isAfter(match.getRegistrationDeadline())) {
             throw new BadRequestException("Registration deadline has passed");
         }
         
@@ -1184,7 +1200,7 @@ public class MatchService implements IMatchService {
         User currentUser = getCurrentUser();
 
         // Check if registration is still open
-        if (LocalDateTime.now().isAfter(match.getRegistrationDeadline())) {
+        if (OffsetDateTime.now().isAfter(match.getRegistrationDeadline())) {
             throw new BadRequestException("Registration deadline has passed");
         }
         
@@ -1227,7 +1243,7 @@ public class MatchService implements IMatchService {
         User currentUser = getCurrentUser();
 
         // Check match status and registration deadline
-        if (LocalDateTime.now().isAfter(match.getRegistrationDeadline())) {
+        if (OffsetDateTime.now().isAfter(match.getRegistrationDeadline())) {
             throw new BadRequestException("Registration deadline has passed");
         }
         if (match.getStatus() == MatchStatus.CANCELLED || match.getStatus() == MatchStatus.COMPLETED) {
@@ -1249,41 +1265,102 @@ public class MatchService implements IMatchService {
                 && match.getPricePerPlayer().compareTo(BigDecimal.ZERO) > 0;
 
         Payment payment = null;
-        if (isPaidEvent) {
-            if (request == null || request.getPaymentIntentId() == null || request.getPaymentIntentId().isBlank()) {
-                throw new BadRequestException("A confirmed payment is required to join this paid match");
-            }
+        EventBooking eventBooking = null;
 
+        if (isPaidEvent) {
             BigDecimal expectedAmount = match.getPricePerPlayer();
 
-            // Lookup the existing confirmed payment by its intent ID
-            payment = paymentRepository.findByStripePaymentIntentId(request.getPaymentIntentId())
-                    .orElseThrow(() -> new BadRequestException("Payment not found for the provided payment intent"));
+            // Check if paymentIntentId is provided (Stripe payment)
+            if (request != null && request.getPaymentIntentId() != null && !request.getPaymentIntentId().isBlank()) {
+                // Handle Stripe payment (existing logic)
+                payment = paymentRepository.findByStripePaymentIntentId(request.getPaymentIntentId())
+                        .orElseThrow(() -> new BadRequestException("Payment not found for the provided payment intent"));
 
-            if (!payment.getUser().getId().equals(currentUser.getId())) {
-                throw new BadRequestException("Payment does not belong to the current user");
+                if (!payment.getUser().getId().equals(currentUser.getId())) {
+                    throw new BadRequestException("Payment does not belong to the current user");
+                }
+
+                if (payment.getType() != PaymentType.MATCH_FEE) {
+                    throw new BadRequestException("Payment is not a match fee");
+                }
+
+                if (payment.getStatus() != PaymentStatus.SUCCEEDED) {
+                    throw new BadRequestException("Payment has not been confirmed");
+                }
+
+                if (payment.getAmount() == null || payment.getAmount().compareTo(expectedAmount) != 0) {
+                    throw new BadRequestException("Payment amount does not match the required match fee");
+                }
+
+                // Record the transaction for the match fee payment
+                transactionService.recordMatchPayment(
+                        currentUser,
+                        null,
+                        payment,
+                        match,
+                        expectedAmount,
+                        match.getCurrency(),
+                        "Match fee payment for " + match.getTitle()
+                );
+
+                // Create event booking for Stripe payment
+                eventBooking = EventBooking.builder()
+                        .payment(payment)
+                        .match(match)
+                        .user(currentUser)
+                        .amount(expectedAmount)
+                        .currency(match.getCurrency())
+                        .build();
+                eventBookingRepository.save(eventBooking);
+
+            } else {
+                // Handle wallet payment (paymentIntentId is null)
+                Wallet userWallet = walletService.getWalletForUser(currentUser);
+                if (userWallet == null) {
+                    throw new BadRequestException("No wallet found for user. Please set up a wallet or use Stripe payment.");
+                }
+
+                if (!userWallet.getCurrency().equals(match.getCurrency())) {
+                    throw new BadRequestException("Wallet currency (" + userWallet.getCurrency() + ") does not match match currency (" + match.getCurrency() + ")");
+                }
+
+                if (userWallet.getBalance().compareTo(expectedAmount) < 0) {
+                    throw new BadRequestException("Insufficient wallet balance. Required: " + expectedAmount + " " + match.getCurrency() + ", Available: " + userWallet.getBalance() + " " + userWallet.getCurrency());
+                }
+
+                // Deduct from wallet
+                userWallet.setBalance(userWallet.getBalance().subtract(expectedAmount));
+                walletRepository.save(userWallet);
+
+                // Create transaction record for wallet deduction
+                transactionService.recordMatchPayment(
+                        currentUser,
+                        userWallet,
+                        null, // no payment entity for wallet transactions
+                        match,
+                        expectedAmount.negate(), // negative amount for deduction
+                        match.getCurrency(),
+                        "Match fee payment for " + match.getTitle()
+                );
+
+                // Create event booking for wallet payment (without payment entity)
+                eventBooking = EventBooking.builder()
+                        .match(match)
+                        .user(currentUser)
+                        .amount(expectedAmount)
+                        .currency(match.getCurrency())
+                        .build();
+                eventBookingRepository.save(eventBooking);
             }
-
-
-            if (payment.getType() != PaymentType.MATCH_FEE) {
-                throw new BadRequestException("Payment is not a match fee");
-            }
-
-            if (payment.getStatus() != PaymentStatus.SUCCEEDED) {
-                throw new BadRequestException("Payment has not been confirmed");
-            }
-
-            if (payment.getAmount() == null || payment.getAmount().compareTo(expectedAmount) != 0) {
-                throw new BadRequestException("Payment amount does not match the required match fee");
-            }
-
-            // Link the confirmed payment to this match (if not already linked)
-            if (payment.getMatch() == null) {
-                payment.setMatch(match);
-                payment = paymentRepository.save(payment);
-            } else if (!payment.getMatch().getId().equals(match.getId())) {
-                throw new BadRequestException("Payment is already linked to a different match");
-            }
+        } else {
+            // Free event - create booking entry without payment or transaction
+            eventBooking = EventBooking.builder()
+                    .match(match)
+                    .user(currentUser)
+                    .amount(BigDecimal.ZERO)
+                    .currency(match.getCurrency())
+                    .build();
+            eventBookingRepository.save(eventBooking);
         }
 
         // At this point all validations (and payment for paid matches) have succeeded.
@@ -1353,6 +1430,47 @@ public class MatchService implements IMatchService {
         // For now, return true - you can implement proper location check
         return true;
     }
-
     
+    /**
+     * Daily job that runs shortly after midnight (server time) to mark matches from
+     * the previous calendar day as COMPLETED, provided they are not already
+     * COMPLETED or CANCELLED.
+     *
+     * This helps ensure events are automatically closed off even if they were not
+     * manually completed via the API.
+     *
+     * cron = "0 5 0 * * *" → 00:05 every day
+     */
+    @Scheduled(cron = "0 5 0 * * *")
+    @Transactional
+    public void autoCompleteEventsForPreviousDay() {
+        LocalDate today = LocalDate.now();
+        LocalDate eventDate = today.minusDays(1);
+
+        OffsetDateTime startOfEventDay = eventDate.atStartOfDay().atOffset(ZoneOffset.UTC);
+        OffsetDateTime endOfEventDay = eventDate.atTime(LocalTime.MAX).atOffset(ZoneOffset.UTC);
+
+        log.info("Running scheduled auto-complete for matches between {} and {}", startOfEventDay, endOfEventDay);
+
+        List<Match> matchesToComplete = matchRepository.findUnfinishedMatchesWithinDateRange(
+                startOfEventDay,
+                endOfEventDay
+        );
+
+        if (matchesToComplete.isEmpty()) {
+            log.info("No matches found to auto-complete for {}", eventDate);
+            return;
+        }
+
+        for (Match match : matchesToComplete) {
+            try {
+                match.setStatus(MatchStatus.COMPLETED);
+                log.info("Auto-completed match {} titled '{}'", match.getId(), match.getTitle());
+            } catch (Exception ex) {
+                log.error("Failed to auto-complete match {}: {}", match.getId(), ex.getMessage(), ex);
+            }
+        }
+
+        matchRepository.saveAll(matchesToComplete);
+    }
 }

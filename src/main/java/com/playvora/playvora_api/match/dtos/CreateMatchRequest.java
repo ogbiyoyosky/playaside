@@ -12,8 +12,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.util.Optional;
 import java.util.UUID;
+
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 
 @Data
 @AllArgsConstructor
@@ -33,7 +37,7 @@ public class CreateMatchRequest {
 
     @NotNull(message = "Match date is required")
     @Future(message = "Match date must be in the future")
-    private LocalDateTime matchDate;
+    private OffsetDateTime matchDate;
     
     @NotBlank(message = "Banner URL is required")
     @Size(max = 255, message = "Banner URL must not exceed 255 characters")
@@ -41,7 +45,7 @@ public class CreateMatchRequest {
 
     @NotNull(message = "Registration deadline is required")
     @Future(message = "Registration deadline must be in the future")
-    private LocalDateTime registrationDeadline;
+    private OffsetDateTime registrationDeadline;
 
     @NotNull(message = "Players per team is required")
     @Min(value = 1, message = "Players per team must be at least 1")
@@ -59,9 +63,9 @@ public class CreateMatchRequest {
     @NotNull(message = "Is refundable is required")
     private Boolean isRefundable;
 
-    @NotNull(message = "Max players is required")
-    @Min(value = 1, message = "Max players must be at least 1")
-    private Integer maxPlayers;
+    @JsonSetter(nulls = Nulls.AS_EMPTY)              
+        @Builder.Default
+        private Optional<Integer> maxPlayers = Optional.empty();
 
     @NotNull(message = "Latitude is required")
     private BigDecimal latitude;

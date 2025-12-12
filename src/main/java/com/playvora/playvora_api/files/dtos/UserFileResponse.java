@@ -1,6 +1,6 @@
 package com.playvora.playvora_api.files.dtos;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import lombok.Builder;
 import lombok.Value;
 
@@ -12,6 +12,6 @@ public class UserFileResponse {
     String contentType;
     long size;
     String url;
-    LocalDateTime uploadedAt;
+    OffsetDateTime uploadedAt;
 }
 

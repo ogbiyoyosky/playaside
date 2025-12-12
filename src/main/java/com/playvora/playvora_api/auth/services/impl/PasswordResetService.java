@@ -9,7 +9,7 @@ import com.playvora.playvora_api.user.entities.User;
 import com.playvora.playvora_api.user.enums.AuthProvider;
 import com.playvora.playvora_api.user.repo.UserRepository;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
@@ -55,8 +55,8 @@ public class PasswordResetService implements IPasswordResetService {
             throw new BadRequestException("Password reset is only available for local accounts");
         }
 
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expiresAt = now.plusMinutes(TOKEN_EXPIRATION_MINUTES);
+        OffsetDateTime now = OffsetDateTime.now();
+        OffsetDateTime expiresAt = now.plusMinutes(TOKEN_EXPIRATION_MINUTES);
 
         // Invalidate any existing tokens for this user
         passwordResetTokenRepository.deleteByUser(user);
@@ -92,7 +92,7 @@ public class PasswordResetService implements IPasswordResetService {
         PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
                 .orElseThrow(() -> new BadRequestException("Invalid or expired reset token"));
 
-        LocalDateTime now = LocalDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now();
         if (resetToken.isUsed() || resetToken.getExpiresAt().isBefore(now)) {
             passwordResetTokenRepository.delete(resetToken);
             throw new BadRequestException("Invalid or expired reset token");
@@ -107,11 +107,11 @@ public class PasswordResetService implements IPasswordResetService {
         cleanupExpiredTokens(now);
     }
 
-    private void cleanupExpiredTokens(LocalDateTime referenceTime) {
+    private void cleanupExpiredTokens(OffsetDateTime referenceTime) {
         passwordResetTokenRepository.deleteByExpiresAtBefore(referenceTime);
     }
 
-    private String buildRawToken(User user, LocalDateTime expiresAt) {
+    private String buildRawToken(User user, OffsetDateTime expiresAt) {
         return user.getId() + ":" + user.getEmail() + ":" + UUID.randomUUID() + ":" + expiresAt;
     }
 
@@ -121,7 +121,7 @@ public class PasswordResetService implements IPasswordResetService {
                 .encodeToString(rawToken.getBytes(StandardCharsets.UTF_8));
     }
 
-    private void sendPasswordResetEmail(User user, String token, LocalDateTime expiresAt) {
+    private void sendPasswordResetEmail(User user, String token, OffsetDateTime expiresAt) {
         if (frontendUrl == null || frontendUrl.isBlank()) {
             log.warn("Frontend URL not configured. Skipping password reset email for user {}", user.getEmail());
             return;

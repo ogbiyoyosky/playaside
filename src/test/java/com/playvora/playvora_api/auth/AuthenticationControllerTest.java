@@ -18,6 +18,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.HashSet;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -58,8 +60,8 @@ class AuthenticationControllerTest {
                 .lastName("User")
                 .provider(AuthProvider.LOCAL)
                 .enabled(true)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
+                .createdAt(OffsetDateTime.now(ZoneOffset.UTC))
+                .updatedAt(OffsetDateTime.now(ZoneOffset.UTC))
                 .userRoles(new HashSet<>())
                 .build();
         

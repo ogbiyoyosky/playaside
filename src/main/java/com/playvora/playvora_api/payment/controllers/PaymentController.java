@@ -9,9 +9,14 @@ import com.playvora.playvora_api.common.utils.CurrencyMapper;
 import com.playvora.playvora_api.payment.dtos.CreateSubscriptionRequest;
 import com.playvora.playvora_api.payment.dtos.PaymentIntentRequest;
 import com.playvora.playvora_api.payment.dtos.PaymentResponse;
+import com.playvora.playvora_api.payment.dtos.SavedPaymentMethodResponse;
+import com.playvora.playvora_api.payment.dtos.SavePaymentMethodRequest;
 import com.playvora.playvora_api.payment.dtos.SubscriptionResponse;
+import com.playvora.playvora_api.payment.dtos.UpdatePaymentIntentRequest;
 import com.playvora.playvora_api.payment.dtos.WalletCheckoutSessionRequest;
 import com.playvora.playvora_api.payment.dtos.WalletCheckoutSessionResponse;
+import com.playvora.playvora_api.payment.dtos.ApplePayDomainRequest;
+import com.playvora.playvora_api.payment.dtos.ApplePayDomainResponse;
 import com.playvora.playvora_api.payment.services.IPaymentService;
 import com.playvora.playvora_api.user.entities.User;
 import com.playvora.playvora_api.user.repo.UserRepository;
@@ -50,6 +55,15 @@ public class PaymentController {
                 .body(ApiResponse.success(response, "Payment intent created successfully"));
     }
 
+    @PutMapping("/intent/{paymentIntentId}/payment-method")
+    @Operation(summary = "Update payment intent with saved card", description = "Update an existing payment intent to use a saved payment method")
+    public ResponseEntity<ApiResponse<PaymentResponse>> updatePaymentIntentWithSavedCard(
+            @Parameter(description = "Payment Intent ID") @PathVariable String paymentIntentId,
+            @Valid @RequestBody UpdatePaymentIntentRequest request) {
+        PaymentResponse response = paymentService.updatePaymentIntentWithSavedCard(paymentIntentId, request);
+        return ResponseEntity.ok(ApiResponse.success(response, "Payment intent updated with saved card successfully"));
+    }
+
     @PostMapping("/confirm/{paymentIntentId}")
     @Operation(summary = "Confirm payment", description = "Confirm a payment intent")
     public ResponseEntity<ApiResponse<PaymentResponse>> confirmPayment(
@@ -66,7 +80,7 @@ public class PaymentController {
         return ResponseEntity.ok(ApiResponse.success(response, "Payment canceled successfully"));
     }
 
-    @PostMapping("/subscriptions")
+    // @PostMapping("/subscriptions")
     @Operation(summary = "Create subscription", description = "Create a monthly subscription for the current user")
     public ResponseEntity<ApiResponse<SubscriptionResponse>> createSubscription(@Valid @RequestBody CreateSubscriptionRequest request) {
         SubscriptionResponse response = paymentService.createSubscription(request);
@@ -74,7 +88,7 @@ public class PaymentController {
                 .body(ApiResponse.success(response, "Subscription created successfully"));
     }
 
-    @PostMapping("/subscriptions/trial")
+    // @PostMapping("/subscriptions/trial")
     @Operation(summary = "Start 7-day trial", description = "Create a 7-day trial subscription for the current user if eligible")
     public ResponseEntity<ApiResponse<SubscriptionResponse>> startTrial() {
         SubscriptionResponse response = paymentService.createTrialIfEligible();
@@ -82,7 +96,7 @@ public class PaymentController {
                 .body(ApiResponse.success(response, "Trial started successfully"));
     }
 
-    @PostMapping("/subscriptions/{subscriptionId}/cancel")
+    // @PostMapping("/subscriptions/{subscriptionId}/cancel")
     @Operation(summary = "Cancel subscription", description = "Cancel an active subscription")
     public ResponseEntity<ApiResponse<SubscriptionResponse>> cancelSubscription(
             @Parameter(description = "Subscription ID") @PathVariable String subscriptionId) {
@@ -90,7 +104,7 @@ public class PaymentController {
         return ResponseEntity.ok(ApiResponse.success(response, "Subscription canceled successfully"));
     }
 
-    @PutMapping("/subscriptions/{subscriptionId}/payment-method")
+    // @PutMapping("/subscriptions/{subscriptionId}/payment-method")
     @Operation(summary = "Update subscription payment method", description = "Update the payment method for a subscription")
     public ResponseEntity<ApiResponse<SubscriptionResponse>> updateSubscriptionPaymentMethod(
             @Parameter(description = "Subscription ID") @PathVariable String subscriptionId,
@@ -99,7 +113,7 @@ public class PaymentController {
         return ResponseEntity.ok(ApiResponse.success(response, "Subscription payment method updated successfully"));
     }
 
-    @GetMapping("/my-payments")
+    // @GetMapping("/my-payments")
     @Operation(summary = "Get user payments", description = "Get all payments for the current user")
     public ResponseEntity<ApiResponse<PaginatedResponse<PaymentResponse>>> getUserPayments(
             @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
@@ -109,7 +123,7 @@ public class PaymentController {
         return ResponseEntity.ok(ApiResponse.success(payments, "User payments retrieved successfully"));
     }
 
-    @GetMapping("/subscriptions/community/{communityId}")
+    // @GetMapping("/subscriptions/community/{communityId}")
     @Operation(summary = "Get community subscription", description = "Get the active subscription for a community")
     public ResponseEntity<ApiResponse<SubscriptionResponse>> getCommunitySubscription(
             @Parameter(description = "Community ID") @PathVariable UUID communityId) {
@@ -117,14 +131,14 @@ public class PaymentController {
         return ResponseEntity.ok(ApiResponse.success(response, "Community subscription retrieved successfully"));
     }
 
-    @GetMapping("/subscriptions/me")
+    // @GetMapping("/subscriptions/me")
     @Operation(summary = "Get my subscription", description = "Get the active subscription for the current user")
     public ResponseEntity<ApiResponse<SubscriptionResponse>> getMySubscription() {
         SubscriptionResponse response = paymentService.getMyActiveSubscription();
         return ResponseEntity.ok(ApiResponse.success(response, "User subscription retrieved successfully"));
     }
 
-    @GetMapping("/subscriptions/community/{communityId}/status")
+    // @GetMapping("/subscriptions/community/{communityId}/status")
     @Operation(summary = "Check subscription status", description = "Check if a community has an active subscription")
     public ResponseEntity<ApiResponse<Boolean>> checkSubscriptionStatus(
             @Parameter(description = "Community ID") @PathVariable UUID communityId) {
@@ -142,7 +156,7 @@ public class PaymentController {
         String currency = CurrencyMapper.getCurrency(country);
         PaymentConfigResponse config = PaymentConfigResponse.builder()
                 .publishableKey(stripeConfig.getPublishableKey())
-                .applePayMerchantId("merchant.com.playvora") // Your Apple Pay merchant ID
+                .applePayMerchantId("merchant.com.playaside.app") // Your Apple Pay merchant ID
                 .supportedPaymentMethods(stripeConfig.isStripeAvailable() ? 
                         new String[]{"card", "apple_pay", "google_pay"} : 
                         new String[]{})
@@ -157,14 +171,15 @@ public class PaymentController {
     @PostMapping("/webhooks/stripe")
     @Operation(summary = "Stripe webhook", description = "Handle Stripe webhook events")
     public ResponseEntity<String> handleStripeWebhook(HttpServletRequest request) {
+        log.info("Stripe webhook received");
         try {
             String payload = new String(request.getInputStream().readAllBytes());
             String signature = request.getHeader("Stripe-Signature");
-            
+
             paymentService.handleWebhook(payload, signature);
-            
+
             return ResponseEntity.ok("Webhook processed successfully");
-            
+
         } catch (IOException e) {
             log.error("Error reading webhook payload: {}", e.getMessage());
             return ResponseEntity.badRequest().body("Error reading webhook payload");
@@ -174,7 +189,54 @@ public class PaymentController {
         }
     }
 
-    @PostMapping("/wallet-checkout-session")
+    // @PostMapping("/payment-methods")
+    @Operation(summary = "Save payment method", description = "Save a Stripe payment method for the current user")
+    public ResponseEntity<ApiResponse<SavedPaymentMethodResponse>> savePaymentMethod(@Valid @RequestBody SavePaymentMethodRequest request) {
+        SavedPaymentMethodResponse response = paymentService.savePaymentMethod(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, "Payment method saved successfully"));
+    }
+
+    @GetMapping("/payment-methods")
+    @Operation(summary = "Get saved payment methods", description = "Get all saved payment methods for the current user")
+    public ResponseEntity<ApiResponse<java.util.List<SavedPaymentMethodResponse>>> getSavedPaymentMethods() {
+        java.util.List<SavedPaymentMethodResponse> paymentMethods = paymentService.getSavedPaymentMethods();
+        return ResponseEntity.ok(ApiResponse.success(paymentMethods, "Payment methods retrieved successfully"));
+    }
+
+    @DeleteMapping("/payment-methods/{paymentMethodId}")
+    @Operation(summary = "Delete saved payment method", description = "Delete a saved payment method")
+    public ResponseEntity<ApiResponse<Void>> deleteSavedPaymentMethod(
+            @Parameter(description = "Payment Method ID") @PathVariable String paymentMethodId) {
+        paymentService.deleteSavedPaymentMethod(paymentMethodId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Payment method deleted successfully"));
+    }
+
+    @PutMapping("/payment-methods/{paymentMethodId}/default")
+    @Operation(summary = "Set default payment method", description = "Set a payment method as the default for the user")
+    public ResponseEntity<ApiResponse<SavedPaymentMethodResponse>> setDefaultPaymentMethod(
+            @Parameter(description = "Payment Method ID") @PathVariable String paymentMethodId) {
+        SavedPaymentMethodResponse response = paymentService.setDefaultPaymentMethod(paymentMethodId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Default payment method updated successfully"));
+    }
+
+    // @PostMapping("/apple-pay/domains")
+    @Operation(summary = "Register Apple Pay domain", description = "Register a domain with Stripe for Apple Pay")
+    public ResponseEntity<ApiResponse<ApplePayDomainResponse>> registerApplePayDomain(
+            @Valid @RequestBody ApplePayDomainRequest request) {
+        ApplePayDomainResponse response = paymentService.registerApplePayDomain(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, "Apple Pay domain registered successfully"));
+    }
+
+    // @GetMapping("/apple-pay/domains")
+    @Operation(summary = "List Apple Pay domains", description = "List all registered Apple Pay domains")
+    public ResponseEntity<ApiResponse<java.util.List<ApplePayDomainResponse>>> listApplePayDomains() {
+        java.util.List<ApplePayDomainResponse> domains = paymentService.listApplePayDomains();
+        return ResponseEntity.ok(ApiResponse.success(domains, "Apple Pay domains retrieved successfully"));
+    }
+
+    // @PostMapping("/wallet-checkout-session")
     @Operation(summary = "Create Stripe Checkout session for wallet top-up",
             description = "Creates a Stripe Checkout Session using a raw amount instead of a Price ID")
     public ResponseEntity<ApiResponse<WalletCheckoutSessionResponse>> createWalletCheckoutSession(

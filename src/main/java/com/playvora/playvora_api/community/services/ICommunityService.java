@@ -7,6 +7,7 @@ import com.playvora.playvora_api.community.dtos.CommunitySearchRequest;
 import com.playvora.playvora_api.community.dtos.CreateCommunityRequest;
 import com.playvora.playvora_api.community.dtos.UpdateCommunityRequest;
 import com.playvora.playvora_api.community.entities.Community;
+import com.playvora.playvora_api.user.dtos.UserResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -29,4 +30,5 @@ public interface ICommunityService {
     List<String> getCommunitiesMetadata();
     Long getCommunityMemberCount(UUID id);
     boolean isUserMemberOfCommunity(UUID userId, UUID communityId);
+    List<UserResponse> getCommunityMembers(UUID communityId);
 }

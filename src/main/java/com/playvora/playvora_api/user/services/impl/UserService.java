@@ -6,7 +6,7 @@ import com.playvora.playvora_api.common.exception.BadRequestException;
 import com.playvora.playvora_api.community.entities.CommunityMember;
 import com.playvora.playvora_api.community.repo.CommunityMemberRepository;
 import com.playvora.playvora_api.user.dtos.RegisterRequest;
-import com.playvora.playvora_api.user.dtos.UpdateRequest;
+import com.playvora.playvora_api.user.dtos.UpdateRequest;       
 import com.playvora.playvora_api.user.entities.Role;
 import com.playvora.playvora_api.user.entities.User;
 import com.playvora.playvora_api.user.entities.UserRole;
@@ -171,5 +171,11 @@ public class UserService implements IUserService {
     public List<CommunityMember> getUserCommunities(UUID userId) {
         return communityMemberRepository.findActiveMembershipsByUserId(userId);
     }
-    
+
+    @Override
+    public User getUserById(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+            return user;
+    }
 }

@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.playvora.playvora_api.user.dtos.UserLimited;
 import com.playvora.playvora_api.user.dtos.UserResponse;
 import com.playvora.playvora_api.user.dtos.UserRoleResponse;
 import com.playvora.playvora_api.user.entities.User;
@@ -48,6 +49,15 @@ public class UserMapper {
                 // Endpoints that have specific match/event context can override this field.
                 .registeredCommunities(Collections.emptyMap())
                 .registeredEvents(Collections.emptyMap())
+                .build();
+    }
+
+    public static UserLimited convertToLimited(User user) {
+        return UserLimited.builder()
+                .id(user.getId())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .profilePictureUrl(user.getProfilePictureUrl())
                 .build();
     }
 }

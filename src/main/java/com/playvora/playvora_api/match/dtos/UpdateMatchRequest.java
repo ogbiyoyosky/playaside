@@ -11,7 +11,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 @Data
@@ -29,11 +29,11 @@ public class UpdateMatchRequest {
 
     @JsonSetter(nulls = Nulls.AS_EMPTY)
         @Builder.Default
-        private Optional<LocalDateTime> matchDate = Optional.empty();
+        private Optional<OffsetDateTime> matchDate = Optional.empty();
 
     @JsonSetter(nulls = Nulls.AS_EMPTY)
         @Builder.Default
-        private Optional<LocalDateTime> registrationDeadline = Optional.empty();
+        private Optional<OffsetDateTime> registrationDeadline = Optional.empty();
 
     @JsonSetter(nulls = Nulls.AS_EMPTY)
         @Builder.Default

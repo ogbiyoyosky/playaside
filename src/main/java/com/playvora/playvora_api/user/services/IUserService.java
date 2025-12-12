@@ -4,6 +4,7 @@ import com.playvora.playvora_api.auth.dtos.AuthProviderAttribute;
 import com.playvora.playvora_api.community.entities.CommunityMember;
 import com.playvora.playvora_api.user.dtos.RegisterRequest;
 import com.playvora.playvora_api.user.dtos.UpdateRequest;
+import com.playvora.playvora_api.user.dtos.UserLimited;
 import com.playvora.playvora_api.user.entities.User;
 import org.springframework.stereotype.Service;
 
@@ -23,4 +24,5 @@ public interface IUserService {
      * Return all active community memberships for the given user.
      */
     List<CommunityMember> getUserCommunities(UUID userId);
+    User getUserById(UUID userId);
 }

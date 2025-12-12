@@ -7,7 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,6 +20,6 @@ public class TeamResponse {
     private String name;
     private UserResponse captain;
     private String color;
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
     private List<TeamPlayerResponse> players;
 }

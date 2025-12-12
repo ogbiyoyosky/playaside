@@ -62,6 +62,7 @@ public class DynamicCorsConfigurationSource implements CorsConfigurationSource {
         allowedOrigins.add("https://preview.app.playaside.com");
         allowedOrigins.add("https://app.playaside.com");
         allowedOrigins.add("https://devapp.playaside.com:3000");
+        allowedOrigins.add("http://192.168.178.139:8082");
         allowedOrigins.add("https://devapp.playaside.com:8082"); // Specific port for dev
 
         // Add local development origins with both http and https
@@ -92,6 +93,7 @@ public class DynamicCorsConfigurationSource implements CorsConfigurationSource {
         }
         allowedOrigins.add("http://localhost:8080"); 
         allowedOrigins.add("http://localhost:8082");
+        allowedOrigins.add("http://192.168.178.139:8082");
         // For local API testing if served on 8080
     }
 } 

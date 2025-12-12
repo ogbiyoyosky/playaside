@@ -10,7 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -51,10 +51,10 @@ public class Match {
     private String type;
 
     @Column(name = "match_date", nullable = false)
-    private LocalDateTime matchDate;
+    private OffsetDateTime matchDate;
 
     @Column(name = "registration_deadline", nullable = false)
-    private LocalDateTime registrationDeadline;
+    private OffsetDateTime registrationDeadline;
 
 
     @Column(name = "players_per_team", nullable = false)
@@ -86,11 +86,11 @@ public class Match {
 
     @Column(name = "created_at", updatable = false)
     @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private OffsetDateTime createdAt = OffsetDateTime.now();
 
     @Column(name = "updated_at")
     @Builder.Default
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    private OffsetDateTime updatedAt = OffsetDateTime.now();
 
     @Column(name = "is_paid_event")
     @Builder.Default
@@ -145,7 +145,7 @@ public class Match {
 
     @PreUpdate
     public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
     }
 
     // Helper method for currentPickingTeamId

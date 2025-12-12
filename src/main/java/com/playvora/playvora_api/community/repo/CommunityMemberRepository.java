@@ -25,7 +25,7 @@ public interface CommunityMemberRepository extends JpaRepository<CommunityMember
     @Query("SELECT cm FROM CommunityMember cm WHERE cm.user.id = :userId AND cm.isActive = true")
     List<CommunityMember> findActiveMembershipsByUserId(@Param("userId") UUID userId);
     
-    @Query("SELECT cm FROM CommunityMember cm WHERE cm.community.id = :communityId AND cm.isActive = true")
+    @Query("SELECT cm FROM CommunityMember cm JOIN FETCH cm.user WHERE cm.community.id = :communityId AND cm.isActive = true")
     List<CommunityMember> findActiveMembersByCommunityId(@Param("communityId") UUID communityId);
     
     @Query("SELECT COUNT(cm) FROM CommunityMember cm WHERE cm.community.id = :communityId AND cm.isActive = true")

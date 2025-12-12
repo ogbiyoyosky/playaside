@@ -24,6 +24,7 @@ public class PaymentIntentRequest {
     private PaymentType type;
 
     private String description;
+    
     private String paymentMethodId;
     @Builder.Default
     private boolean savePaymentMethod = false;

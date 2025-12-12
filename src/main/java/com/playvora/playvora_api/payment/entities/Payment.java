@@ -1,6 +1,5 @@
 package com.playvora.playvora_api.payment.entities;
 
-import com.playvora.playvora_api.match.entities.Match;
 import com.playvora.playvora_api.payment.enums.PaymentStatus;
 import com.playvora.playvora_api.payment.enums.PaymentType;
 import com.playvora.playvora_api.user.entities.User;
@@ -13,7 +12,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -31,12 +30,6 @@ public class Payment {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    /**
-     * Optional link to a match when this payment represents a match fee.
-     */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "match_id")
-    private Match match;
 
     @Column(name = "stripe_payment_intent_id", unique = true)
     private String stripePaymentIntentId;
@@ -68,22 +61,26 @@ public class Payment {
     @Column(name = "payment_method")
     private String paymentMethod; // card, apple_pay, google_pay, etc.
 
+    @Column(name = "save_payment_method")
+    @Builder.Default
+    private boolean savePaymentMethod = false;
+
     @Column(name = "failure_reason")
     private String failureReason;
 
     @Column(name = "processed_at")
-    private LocalDateTime processedAt;
+    private OffsetDateTime processedAt;
 
     @Column(name = "created_at", updatable = false)
     @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private OffsetDateTime createdAt = OffsetDateTime.now();
 
     @Column(name = "updated_at")
     @Builder.Default
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    private OffsetDateTime updatedAt = OffsetDateTime.now();
 
     @PreUpdate
     public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
     }
 }

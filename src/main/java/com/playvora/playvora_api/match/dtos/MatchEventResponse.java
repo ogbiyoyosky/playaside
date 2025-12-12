@@ -1,7 +1,7 @@
 package com.playvora.playvora_api.match.dtos;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -25,16 +25,16 @@ public class MatchEventResponse {
     private CommunityResponse community;
     private String title;
     private String description;
-    private LocalDateTime matchDate;
-    private LocalDateTime registrationDeadline;
+    private OffsetDateTime matchDate;
+    private OffsetDateTime registrationDeadline;
     private Integer playersPerTeam;
     private MatchStatus status;
     private boolean isAutoSelection;
     private Integer availablePlayers;
     private Integer totalPlayers;
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
     private String currency;
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
     private List<TeamResponse> teams;
     private List<PlayerAvailablibityResponse> playersAvailability;
     private Boolean draftInProgress;

@@ -17,7 +17,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.UUID;
 
@@ -52,8 +53,8 @@ class AuthenticationServiceTest {
                 .lastName("User")
                 .provider(AuthProvider.LOCAL)
                 .enabled(true)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
+                .createdAt(OffsetDateTime.now(ZoneOffset.UTC))
+                .updatedAt(OffsetDateTime.now(ZoneOffset.UTC))
                 .userRoles(new HashSet<>())
                 .build();
 

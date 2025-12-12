@@ -23,6 +23,8 @@ import com.playvora.playvora_api.match.repo.MatchRepository;
 import com.playvora.playvora_api.user.entities.Role;
 import com.playvora.playvora_api.user.entities.User;
 import com.playvora.playvora_api.user.entities.UserRole;
+import com.playvora.playvora_api.user.dtos.UserResponse;
+import com.playvora.playvora_api.user.mappers.UserMapper;
 import com.playvora.playvora_api.user.repo.RoleRepository;
 import com.playvora.playvora_api.user.repo.UserRepository;
 import com.playvora.playvora_api.user.repo.UserRoleRepository;
@@ -549,5 +551,18 @@ public class CommunityService implements ICommunityService {
     @Override
     public boolean isUserMemberOfCommunity(UUID userId, UUID communityId) {
         return communityMemberRepository.existsByCommunityIdAndUserIdAndIsActiveTrue(communityId, userId);
+    }
+
+    @Override
+    public List<UserResponse> getCommunityMembers(UUID communityId) {
+        // Ensure the community exists (will throw if not found)
+        getCommunityById(communityId);
+
+        List<CommunityMember> members = communityMemberRepository.findActiveMembersByCommunityId(communityId);
+
+        return members.stream()
+                .map(CommunityMember::getUser)
+                .map(UserMapper::convertToResponse)
+                .collect(Collectors.toList());
     }
 }

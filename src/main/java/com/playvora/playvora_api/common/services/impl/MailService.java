@@ -4,7 +4,7 @@ import com.playvora.playvora_api.common.exception.BadRequestException;
 import com.playvora.playvora_api.common.services.IMailService;
 import com.playvora.playvora_api.user.entities.User;
 import com.playvora.playvora_api.venue.entities.VenueBooking;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,13 +32,13 @@ public class MailService implements IMailService {
     private String fromAddress;
 
     @Override
-    public void sendPasswordResetEmail(User user, String resetLink, LocalDateTime expiresAt) {
+    public void sendPasswordResetEmail(User user, String resetLink, OffsetDateTime expiresAt) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(user.getEmail());
         message.setFrom(fromAddress);
         message.setSubject("Playaside Password Reset Instructions");
 
-        String formattedExpiry = expiresAt.atZone(java.time.ZoneId.systemDefault())
+        String formattedExpiry = expiresAt.toZonedDateTime()
                 .format(HUMAN_READABLE_FORMAT);
 
         message.setText(buildMessageBody(user, resetLink, formattedExpiry));
@@ -84,9 +84,9 @@ public class MailService implements IMailService {
         message.setFrom(fromAddress);
         message.setSubject("Your Playaside venue booking is confirmed");
 
-        String start = booking.getStartTime().atZone(java.time.ZoneId.systemDefault())
+        String start = booking.getStartTime().toZonedDateTime()
                 .format(HUMAN_READABLE_FORMAT);
-        String end = booking.getEndTime().atZone(java.time.ZoneId.systemDefault())
+        String end = booking.getEndTime().toZonedDateTime()
                 .format(HUMAN_READABLE_FORMAT);
 
         String body = String.format("""

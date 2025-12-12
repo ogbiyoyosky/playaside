@@ -10,7 +10,7 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -43,7 +43,7 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
         // Create error response
         Map<String, Object> errorDetails = new HashMap<>();
-        errorDetails.put("timestamp", LocalDateTime.now().toString());
+        errorDetails.put("timestamp", OffsetDateTime.now().toString());
         errorDetails.put("status", HttpServletResponse.SC_UNAUTHORIZED);
         errorDetails.put("error", "Unauthorized");
         errorDetails.put("message", "Authentication required. Please provide a valid access token.");

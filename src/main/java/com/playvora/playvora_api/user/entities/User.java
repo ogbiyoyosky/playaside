@@ -8,7 +8,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -47,6 +47,16 @@ public class User {
     @Column(name = "country")
     private String country;
 
+    @Column(name = "connected_account_id")
+    private String connectedAccountId;
+
+    @Column(name = "stripe_customer_id")
+    private String stripeCustomerId;
+
+    @Column(name = "payouts_enabled")
+    @Builder.Default
+    private boolean payoutsEnabled = false;
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     @Builder.Default
@@ -61,15 +71,15 @@ public class User {
 
     @Column(name = "created_at", updatable = false)
     @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private OffsetDateTime createdAt = OffsetDateTime.now();
 
     @Column(name = "updated_at")
     @Builder.Default
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    private OffsetDateTime updatedAt = OffsetDateTime.now();
 
     @PreUpdate
     public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
     }
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)

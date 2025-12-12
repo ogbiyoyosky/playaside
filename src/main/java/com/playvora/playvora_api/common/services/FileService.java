@@ -9,7 +9,7 @@ import com.playvora.playvora_api.files.repositories.UserFileRepository;
 import com.playvora.playvora_api.user.entities.User;
 import com.playvora.playvora_api.user.repo.UserRepository;
 import java.security.Principal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +55,7 @@ public class FileService {
                         .size(file.getSize())
                         .fileUrl(fileUrl)
                         .fileKey(fileKey)
-                        .uploadedAt(LocalDateTime.now())
+                        .uploadedAt(OffsetDateTime.now())
                         .build());
 
         Map<String, Object> response = new HashMap<>();

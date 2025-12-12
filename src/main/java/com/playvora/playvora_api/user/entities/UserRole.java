@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.playvora.playvora_api.community.entities.Community;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Data
@@ -34,16 +34,16 @@ public class UserRole {
     private Community community;
 
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    private OffsetDateTime deletedAt;
 
     @Column(name = "created_at", updatable = false)
     @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private OffsetDateTime createdAt = OffsetDateTime.now();
 
     @PrePersist
     public void prePersist() {
         if (this.createdAt == null) {
-            this.createdAt = LocalDateTime.now();
+            this.createdAt = OffsetDateTime.now();
         }
     }
 
@@ -58,6 +58,6 @@ public class UserRole {
      * Soft delete this role assignment
      */
     public void softDelete() {
-        this.deletedAt = LocalDateTime.now();
+        this.deletedAt = OffsetDateTime.now();
     }
 }

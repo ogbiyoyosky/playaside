@@ -3,6 +3,7 @@ package com.playvora.playvora_api.match.services.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.playvora.playvora_api.app.AppUserDetail;
 import com.playvora.playvora_api.common.exception.BadRequestException;
+import com.playvora.playvora_api.chat.dtos.ChatNotification;
 import com.playvora.playvora_api.match.dtos.chat.ChatMessageRequest;
 import com.playvora.playvora_api.match.dtos.chat.ChatMessageResponse;
 import com.playvora.playvora_api.match.dtos.websocket.MatchUpdateMessage;
@@ -11,9 +12,11 @@ import com.playvora.playvora_api.match.dtos.websocket.TeamSelectionMessage;
 import com.playvora.playvora_api.match.dtos.websocket.WebSocketMessage;
 import com.playvora.playvora_api.match.entities.ChatMessage;
 import com.playvora.playvora_api.match.entities.Match;
+import com.playvora.playvora_api.match.entities.MatchChatReadState;
 import com.playvora.playvora_api.match.mappers.MatchEventMapper;
 import com.playvora.playvora_api.match.repo.AvailabilityRepository;
 import com.playvora.playvora_api.match.repo.ChatMessageRepository;
+import com.playvora.playvora_api.match.repo.MatchChatReadStateRepository;
 import com.playvora.playvora_api.match.repo.MatchRegistrationRepository;
 import com.playvora.playvora_api.match.repo.MatchRepository;
 import com.playvora.playvora_api.match.repo.TeamRepository;
@@ -29,7 +32,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +60,7 @@ public class MatchWebSocketService implements IMatchWebSocketService {
     private final MatchRepository matchRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final MatchRegistrationRepository matchRegistrationRepository;
+    private final MatchChatReadStateRepository matchChatReadStateRepository;
     private final IPushNotificationService pushNotificationService;
     private final SimpMessagingTemplate messagingTemplate;
     private final ObjectMapper objectMapper;
@@ -228,7 +232,7 @@ public class MatchWebSocketService implements IMatchWebSocketService {
                     .matchTitle(match.getTitle())
                     .status(match.getStatus())
                     .message("Teams have been generated successfully")
-                    .timestamp(LocalDateTime.now(ZoneOffset.UTC))
+                    .timestamp(OffsetDateTime.now(ZoneOffset.UTC))
                     .data(matchResponse)
                     .build();
 
@@ -269,7 +273,7 @@ public class MatchWebSocketService implements IMatchWebSocketService {
                     .matchTitle(match.getTitle())
                     .status(match.getStatus())
                     .message("Match has started!")
-                    .timestamp(LocalDateTime.now(ZoneOffset.UTC))
+                    .timestamp(OffsetDateTime.now(ZoneOffset.UTC))
                     .data(matchResponse)
                     .build();
 
@@ -310,7 +314,7 @@ public class MatchWebSocketService implements IMatchWebSocketService {
                     .matchTitle(match.getTitle())
                     .status(match.getStatus())
                     .message("Match has been completed!")
-                    .timestamp(LocalDateTime.now(ZoneOffset.UTC))
+                    .timestamp(OffsetDateTime.now(ZoneOffset.UTC))
                     .data(matchResponse)
                     .build();
 
@@ -361,15 +365,27 @@ public class MatchWebSocketService implements IMatchWebSocketService {
                     .build();
             chatMessage = chatMessageRepository.save(chatMessage);
 
+            // Update read state for sender - they have read up to this message
+            MatchChatReadState senderReadState = matchChatReadStateRepository
+                    .findByUserIdAndMatchId(currentUser.getId(), matchId)
+                    .orElse(MatchChatReadState.builder()
+                            .user(currentUser)
+                            .match(match)
+                            .build());
+            senderReadState.setLastReadAt(chatMessage.getCreatedAt());
+            matchChatReadStateRepository.save(senderReadState);
+
             // Convert to response DTO
+            String senderName = currentUser.getFirstName() + " " + currentUser.getLastName();
             ChatMessageResponse response = ChatMessageResponse.builder()
                     .id(chatMessage.getId())
                     .matchId(matchId)
                     .senderId(currentUser.getId())
-                    .senderName(currentUser.getFirstName() + " " + currentUser.getLastName())
+                    .senderName(senderName)
                     .senderFirstName(currentUser.getFirstName())
                     .senderLastName(currentUser.getLastName())
                     .message(chatMessage.getMessage())
+                    .senderProfilePictureUrl(currentUser.getProfilePictureUrl())
                     .createdAt(chatMessage.getCreatedAt())
                     .build();
 
@@ -380,6 +396,20 @@ public class MatchWebSocketService implements IMatchWebSocketService {
 
             log.info("Chat message broadcasted to topic: {}", topic);
 
+            // Send chat notifications to all registered participants except sender
+            try {
+                var registeredUsers = matchRegistrationRepository.findUsersByMatchId(matchId);
+                for (var user : registeredUsers) {
+                    if (!user.getId().equals(currentUser.getId())) {
+                        sendChatNotification(ChatNotification.ChatType.MATCH_EVENT, matchId, chatMessage.getId(),
+                                           currentUser.getId(), senderName, request.getMessage(),
+                                           chatMessage.getCreatedAt(), user.getEmail());
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Error sending chat notifications for match chat: {}", e.getMessage(), e);
+            }
+
             // Get all registered participants in the match (excluding sender)
             var registeredUsers = matchRegistrationRepository.findUsersByMatchId(matchId);
             List<String> participantUserIds = registeredUsers.stream()
@@ -389,7 +419,6 @@ public class MatchWebSocketService implements IMatchWebSocketService {
 
             // Send push notifications to all participants except sender
             if (!participantUserIds.isEmpty()) {
-                String senderName = currentUser.getFirstName() + " " + currentUser.getLastName();
                 String notificationTitle = "New message in " + match.getTitle();
                 String notificationBody = senderName + ": " + request.getMessage();
 
@@ -462,6 +491,50 @@ public class MatchWebSocketService implements IMatchWebSocketService {
                 matchId, teams.size(), availabilities.size());
 
         return match;
+    }
+
+    /**
+     * Sends a chat notification to a specific user via the unified chat notifications queue.
+     * This provides real-time updates for all chat types regardless of whether the user is
+     * currently viewing that specific chat.
+     */
+    private void sendChatNotification(ChatNotification.ChatType chatType,
+                                      UUID targetId,
+                                      UUID messageId,
+                                      UUID senderId,
+                                      String senderName,
+                                      String messagePreview,
+                                      OffsetDateTime timestamp,
+                                      String recipientEmail) {
+        try {
+            // Create preview (first ~50 characters)
+            String preview = messagePreview;
+            if (preview != null && preview.length() > 50) {
+                preview = preview.substring(0, 47) + "...";
+            }
+
+            ChatNotification notification = ChatNotification.builder()
+                    .chatType(chatType)
+                    .targetId(targetId)
+                    .messageId(messageId)
+                    .senderId(senderId)
+                    .senderName(senderName)
+                    .preview(preview)
+                    .timestamp(timestamp)
+                    .build();
+
+            WebSocketMessage wsMessage = WebSocketMessage.create("chat_notification", notification);
+            messagingTemplate.convertAndSendToUser(
+                    recipientEmail,
+                    "/queue/chat-notifications",
+                    wsMessage
+            );
+
+            log.debug("Chat notification sent to user {} for {} chat {}: {}",
+                     recipientEmail, chatType, targetId, messageId);
+        } catch (Exception e) {
+            log.error("Error sending chat notification to user {}: {}", recipientEmail, e.getMessage(), e);
+        }
     }
 
     /**

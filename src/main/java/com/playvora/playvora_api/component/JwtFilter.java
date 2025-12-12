@@ -238,6 +238,10 @@ public class JwtFilter extends OncePerRequestFilter {
                requestPath.startsWith("/api-docs/") ||
                requestPath.startsWith("/api/v1/users/me") ||
                requestPath.startsWith("/api/v1/users") ||
-               requestPath.startsWith("/api/v1/files");
+               requestPath.startsWith("/api/v1/files") ||
+               requestPath.startsWith("/api/v1/payments/config") ||
+               requestPath.startsWith("/api/v1/payments/webhooks/stripe") ||
+               requestPath.startsWith("/api/v1/payments/apple-pay/domains") ||
+               requestPath.startsWith("/api/v1/payments/apple-pay/domains/**");
     }
 }

@@ -8,7 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -40,7 +40,7 @@ public class MatchRegistration {
 
     @Column(name = "joined_at", updatable = false)
     @Builder.Default
-    private LocalDateTime joinedAt = LocalDateTime.now();
+    private OffsetDateTime joinedAt = OffsetDateTime.now();
 }
 
 

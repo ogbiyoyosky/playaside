@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import com.playvora.playvora_api.community.dtos.CommunityResponse;
@@ -23,7 +23,7 @@ public class UserRoleResponse {
     private UUID communityId;
     private CommunityResponse community;
     private String communityName;
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
     private boolean isActive;
 }
 

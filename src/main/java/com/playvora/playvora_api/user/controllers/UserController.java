@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import com.playvora.playvora_api.common.dto.ApiResponse;
@@ -18,6 +19,7 @@ import com.playvora.playvora_api.match.repo.MatchRegistrationRepository;
 import com.playvora.playvora_api.user.dtos.RegisterRequest;
 import com.playvora.playvora_api.user.dtos.RegisterUserResponse;
 import com.playvora.playvora_api.user.dtos.UpdateRequest;
+import com.playvora.playvora_api.user.dtos.UserLimited;
 import com.playvora.playvora_api.user.dtos.UserResponse;
 import com.playvora.playvora_api.user.entities.User;
 import com.playvora.playvora_api.user.mappers.UserMapper;
@@ -89,6 +91,16 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(userResponse, "User fetched successfully"));
 
 
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @SecurityRequirement(name = "BearerAuth")
+    @GetMapping(path = "/{userId}")
+    @Operation(summary = "Get user by ID", description = "Get a user by their ID")
+    public ResponseEntity<ApiResponse<UserLimited>> getUserById(@PathVariable UUID userId) {
+        User user = userService.getUserById(userId);
+        UserLimited userResponse = UserMapper.convertToLimited(user);
+        return ResponseEntity.ok(ApiResponse.success(userResponse, "User fetched successfully"));
     }
 
     /**

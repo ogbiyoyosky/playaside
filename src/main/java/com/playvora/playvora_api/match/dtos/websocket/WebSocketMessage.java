@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
 @Data
@@ -15,7 +15,7 @@ import java.time.ZoneOffset;
 public class WebSocketMessage {
     private String type;
     private String messageId;
-    private LocalDateTime timestamp;
+    private OffsetDateTime timestamp;
     private Object data;
     private String message;
     
@@ -23,7 +23,7 @@ public class WebSocketMessage {
         return WebSocketMessage.builder()
                 .type(type)
                 .messageId(java.util.UUID.randomUUID().toString())
-                .timestamp(LocalDateTime.now(ZoneOffset.UTC))
+                .timestamp(OffsetDateTime.now(ZoneOffset.UTC))
                 .data(data)
                 .build();
     }
@@ -32,7 +32,7 @@ public class WebSocketMessage {
         return WebSocketMessage.builder()
                 .type(type)
                 .messageId(java.util.UUID.randomUUID().toString())
-                .timestamp(LocalDateTime.now(ZoneOffset.UTC))
+                .timestamp(OffsetDateTime.now(ZoneOffset.UTC))
                 .data(data)
                 .message(message)
                 .build();

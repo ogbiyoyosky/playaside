@@ -1,6 +1,6 @@
 package com.playvora.playvora_api.common.dto;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,14 +16,14 @@ public class SuccessResponse<T> {
     private String message;
     private T data;
     @Builder.Default
-    private LocalDateTime timestamp = LocalDateTime.now();
+    private OffsetDateTime timestamp = OffsetDateTime.now();
 
     public static <T> SuccessResponse<T> of(T data, String message) {
         return SuccessResponse.<T>builder()
                 .success(true)
                 .data(data)
                 .message(message)
-                .timestamp(LocalDateTime.now())
+                .timestamp(OffsetDateTime.now())
                 .build();
     }
 
@@ -31,7 +31,7 @@ public class SuccessResponse<T> {
         return SuccessResponse.<T>builder()
                 .success(true)
                 .message(message)
-                .timestamp(LocalDateTime.now())
+                .timestamp(OffsetDateTime.now())
                 .build();
     }
 }

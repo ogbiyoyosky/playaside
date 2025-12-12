@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
 
@@ -17,18 +17,18 @@ public class ErrorResponse {
     private String code;
     private String message;
     private Map<String, String> details;
-    private LocalDateTime timestamp;
+    private OffsetDateTime timestamp;
 
     public ErrorResponse(String code, String message) {
         this.code = code;
         this.message = message;
-        this.timestamp = LocalDateTime.now(ZoneOffset.UTC);
+        this.timestamp = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
     public ErrorResponse(String code, String message, Map<String, String> details) {
         this.code = code;
         this.message = message;
         this.details = details;
-        this.timestamp = LocalDateTime.now(ZoneOffset.UTC);
+        this.timestamp = OffsetDateTime.now(ZoneOffset.UTC);
     }
 }

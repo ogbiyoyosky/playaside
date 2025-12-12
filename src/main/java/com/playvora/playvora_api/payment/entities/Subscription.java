@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -60,33 +60,33 @@ public class Subscription {
     private String billingCycle = "monthly";
 
     @Column(name = "trial_start_date")
-    private LocalDateTime trialStartDate;
+    private OffsetDateTime trialStartDate;
 
     @Column(name = "trial_end_date")
-    private LocalDateTime trialEndDate;
+    private OffsetDateTime trialEndDate;
 
     @Column(name = "current_period_start")
-    private LocalDateTime currentPeriodStart;
+    private OffsetDateTime currentPeriodStart;
 
     @Column(name = "current_period_end")
-    private LocalDateTime currentPeriodEnd;
+    private OffsetDateTime currentPeriodEnd;
 
     @Column(name = "next_billing_date")
-    private LocalDateTime nextBillingDate;
+    private OffsetDateTime nextBillingDate;
 
     @Column(name = "canceled_at")
-    private LocalDateTime canceledAt;
+    private OffsetDateTime canceledAt;
 
     @Column(name = "created_at", updatable = false)
     @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private OffsetDateTime createdAt = OffsetDateTime.now();
 
     @Column(name = "updated_at")
     @Builder.Default
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    private OffsetDateTime updatedAt = OffsetDateTime.now();
 
     @PreUpdate
     public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
     }
 }

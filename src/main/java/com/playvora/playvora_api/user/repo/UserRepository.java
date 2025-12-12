@@ -12,7 +12,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.userRoles WHERE u.email = :email")
     Optional<User> findByEmailWithRoles(@Param("email") String email);
-    
+
     Optional<User> findByEmail(String email);
+
     boolean existsByEmail(String email);
+
+    Optional<User> findByConnectedAccountId(String connectedAccountId);
 }

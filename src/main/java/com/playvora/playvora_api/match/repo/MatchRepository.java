@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,22 +26,22 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
                                           Pageable pageable);
     
     @Query("SELECT m FROM Match m WHERE m.matchDate >= :startDate AND m.matchDate <= :endDate")
-    Page<Match> findByDateRange(@Param("startDate") LocalDateTime startDate, 
-                               @Param("endDate") LocalDateTime endDate, 
+    Page<Match> findByDateRange(@Param("startDate") OffsetDateTime startDate, 
+                               @Param("endDate") OffsetDateTime endDate, 
                                Pageable pageable);
     
     @Query("SELECT m FROM Match m WHERE m.community.id = :communityId AND m.matchDate >= :startDate AND m.matchDate <= :endDate")
     Page<Match> findByCommunityIdAndDateRange(@Param("communityId") UUID communityId,
-                                             @Param("startDate") LocalDateTime startDate,
-                                             @Param("endDate") LocalDateTime endDate,
+                                             @Param("startDate") OffsetDateTime startDate,
+                                             @Param("endDate") OffsetDateTime endDate,
                                              Pageable pageable);
     
     @Query("SELECT m FROM Match m WHERE m.registrationDeadline > :now AND m.status IN ('UPCOMING', 'REGISTRATION_OPEN')")
-    List<Match> findOpenRegistrations(@Param("now") LocalDateTime now);
+    List<Match> findOpenRegistrations(@Param("now") OffsetDateTime now);
     
     @Query("SELECT m FROM Match m WHERE m.matchDate BETWEEN :startDate AND :endDate")
-    List<Match> findUpcomingMatches(@Param("startDate") LocalDateTime startDate, 
-                                   @Param("endDate") LocalDateTime endDate);
+    List<Match> findUpcomingMatches(@Param("startDate") OffsetDateTime startDate, 
+                                   @Param("endDate") OffsetDateTime endDate);
     
     @Query("SELECT m FROM Match m JOIN m.availabilities a WHERE a.user.id = :userId")
     Page<Match> findByUserId(@Param("userId") UUID userId, Pageable pageable);
@@ -89,8 +89,8 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
                OR LOWER(m.description) LIKE :search
                OR LOWER(c.name) LIKE :search)
     """)
-    Page<Match> searchUpcomingMatches(@Param("startDate") LocalDateTime startDate,
-                                      @Param("endDate") LocalDateTime endDate,
+    Page<Match> searchUpcomingMatches(@Param("startDate") OffsetDateTime startDate,
+                                      @Param("endDate") OffsetDateTime endDate,
                                       @Param("search") String search,
                                       Pageable pageable);
 
@@ -105,8 +105,8 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
                OR LOWER(c.name) LIKE :search)
     """)
     Page<Match> searchUpcomingMatchesByCommunity(@Param("communityId") UUID communityId,
-                                                 @Param("startDate") LocalDateTime startDate,
-                                                 @Param("endDate") LocalDateTime endDate,
+                                                 @Param("startDate") OffsetDateTime startDate,
+                                                 @Param("endDate") OffsetDateTime endDate,
                                                  @Param("search") String search,
                                                  Pageable pageable);
 
@@ -134,8 +134,8 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
                OR LOWER(c.name) LIKE :search)
     """)
     Page<Match> searchUpcomingMatchesByCreator(@Param("creatorId") UUID creatorId,
-                                               @Param("startDate") LocalDateTime startDate,
-                                               @Param("endDate") LocalDateTime endDate,
+                                               @Param("startDate") OffsetDateTime startDate,
+                                               @Param("endDate") OffsetDateTime endDate,
                                                @Param("search") String search,
                                                Pageable pageable);
 
@@ -182,8 +182,8 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
     """)
     Page<Match> searchUpcomingMatchesByCommunityIdAndCreatorId(@Param("communityId") UUID communityId,
                                                                @Param("creatorId") UUID creatorId,
-                                                               @Param("startDate") LocalDateTime startDate,
-                                                               @Param("endDate") LocalDateTime endDate, Pageable pageable);
+                                                               @Param("startDate") OffsetDateTime startDate,
+                                                               @Param("endDate") OffsetDateTime endDate, Pageable pageable);
 
     @Query("""
         SELECT m FROM Match m
@@ -191,6 +191,31 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
           AND m.matchDate >= :startDate AND m.matchDate <= :endDate
     """)
     Page<Match> searchUpcomingMatchesByCommunityId(@Param("communityId") UUID communityId,
-                                                   @Param("startDate") LocalDateTime startDate,
-                                                   @Param("endDate") LocalDateTime endDate, Pageable pageable);
+                                                   @Param("startDate") OffsetDateTime startDate,
+                                                   @Param("endDate") OffsetDateTime endDate, Pageable pageable);
+
+    /**
+     * Find completed, paid matches within a given matchDate range.
+     */
+    @Query("""
+        SELECT m FROM Match m
+        WHERE m.status = com.playvora.playvora_api.match.enums.MatchStatus.COMPLETED
+          AND m.isPaidEvent = true
+          AND m.matchDate BETWEEN :startDate AND :endDate
+    """)
+    List<Match> findCompletedPaidMatchesWithinDateRange(@Param("startDate") OffsetDateTime startDate,
+                                                        @Param("endDate") OffsetDateTime endDate);
+
+    /**
+     * Find matches that have not yet been completed or cancelled within a given matchDate range.
+     * This is useful for scheduled jobs that automatically mark past events as completed.
+     */
+    @Query("""
+        SELECT m FROM Match m
+        WHERE m.matchDate BETWEEN :startDate AND :endDate
+          AND m.status <> com.playvora.playvora_api.match.enums.MatchStatus.COMPLETED
+          AND m.status <> com.playvora.playvora_api.match.enums.MatchStatus.CANCELLED
+    """)
+    List<Match> findUnfinishedMatchesWithinDateRange(@Param("startDate") OffsetDateTime startDate,
+                                                     @Param("endDate") OffsetDateTime endDate);
 }

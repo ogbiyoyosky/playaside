@@ -1,6 +1,5 @@
 package com.playvora.playvora_api.match.controllers;
 
-import com.playvora.playvora_api.match.dtos.chat.ChatMessageRequest;
 import com.playvora.playvora_api.match.dtos.websocket.PlayerSelectionRequest;
 import com.playvora.playvora_api.match.services.IMatchWebSocketService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -51,13 +50,5 @@ public class WebSocketController {
     public void completeMatch(@DestinationVariable UUID matchId, 
                             SimpMessageHeaderAccessor headerAccessor) {
         matchWebSocketService.completeMatch(matchId, headerAccessor);
-    }
-
-    @MessageMapping("/match-events/{matchId}/chat")
-    @Operation(summary = "Send chat message", description = "Send a chat message to all participants in a match event")
-    public void sendChatMessage(@DestinationVariable UUID matchId,
-                               @Payload @Valid ChatMessageRequest request,
-                               SimpMessageHeaderAccessor headerAccessor) {
-        matchWebSocketService.sendChatMessage(matchId, request, headerAccessor);
     }
 }

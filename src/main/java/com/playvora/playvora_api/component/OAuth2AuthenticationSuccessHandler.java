@@ -7,6 +7,7 @@ import com.playvora.playvora_api.user.enums.AuthProvider;
 import com.playvora.playvora_api.user.services.IJwtService;
 import com.playvora.playvora_api.user.services.IUserService;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -28,9 +29,12 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     private final IUserService userService;
     private final IJwtService jwtService;
     private final IAuthenticationService authenticationService;
+    private final RedirectUriValidator redirectUriValidator;
 
     @Value("${application.frontend.url}")
     private String frontendUrl;
+
+    private static final String REDIRECT_URI_COOKIE_NAME = "redirect_uri";
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
@@ -84,14 +88,63 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         // Save refresh token to database
         String refreshToken = authenticationService.generateRefreshTokenForOAuth2Login(user);
 
-        String redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl)
-                .path("/callback")
+        String targetUrl = determineTargetUrl(request);
+
+        String redirectUrl = UriComponentsBuilder.fromUriString(targetUrl)
                 .queryParam("accessToken", accessToken)
                 .queryParam("refreshToken", refreshToken)
                 .build()
                 .toUriString();
 
+        clearRedirectUriCookie(request, response);
+
         log.debug("Redirecting OAuth2 user to {}", redirectUrl);
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
+    }
+
+    protected String determineTargetUrl(HttpServletRequest request) {
+        String redirectUri = getRedirectUriFromCookie(request);
+
+        if (redirectUri != null && redirectUriValidator.isAuthorizedRedirectUri(redirectUri)) {
+            return redirectUri;
+        }
+
+        // Fallback to default frontend callback URL
+        return UriComponentsBuilder.fromUriString(frontendUrl)
+                .path("/callback")
+                .build()
+                .toUriString();
+    }
+
+    private String getRedirectUriFromCookie(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        for (Cookie cookie : cookies) {
+            if (REDIRECT_URI_COOKIE_NAME.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
+    }
+
+    private void clearRedirectUriCookie(HttpServletRequest request, HttpServletResponse response) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return;
+        }
+        for (Cookie cookie : cookies) {
+            if (REDIRECT_URI_COOKIE_NAME.equals(cookie.getName())) {
+                Cookie toClear = new Cookie(REDIRECT_URI_COOKIE_NAME, null);
+                toClear.setPath("/");
+                toClear.setHttpOnly(true);
+                toClear.setSecure(true);
+                toClear.setMaxAge(0);
+                toClear.setAttribute("SameSite", "Lax");
+                response.addCookie(toClear);
+                break;
+            }
+        }
     }
 }

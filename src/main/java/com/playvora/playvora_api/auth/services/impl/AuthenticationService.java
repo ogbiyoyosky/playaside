@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.playvora.playvora_api.user.enums.AuthProvider;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
@@ -72,7 +72,7 @@ public class AuthenticationService implements IAuthenticationService {
         
         // Extract expiration date from token
         Date expirationDate = jwtService.extractExpiration(token);
-        LocalDateTime expiresAt = LocalDateTime.ofInstant(
+        OffsetDateTime expiresAt = OffsetDateTime.ofInstant(
                 expirationDate.toInstant(), 
                 ZoneId.systemDefault()
         );
@@ -104,7 +104,7 @@ public class AuthenticationService implements IAuthenticationService {
         
         // Extract expiration date from token
         Date expirationDate = jwtService.extractExpiration(token);
-        LocalDateTime expiresAt = LocalDateTime.ofInstant(
+        OffsetDateTime expiresAt = OffsetDateTime.ofInstant(
                 expirationDate.toInstant(), 
                 ZoneId.systemDefault()
         );

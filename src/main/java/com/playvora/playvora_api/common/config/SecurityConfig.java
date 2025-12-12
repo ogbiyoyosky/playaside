@@ -78,6 +78,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/files/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**","/api-docs/swagger-config","/api-docs", "/swagger-ui.html").permitAll()
                         .requestMatchers("/favicon.ico").permitAll()
+                        .requestMatchers("/api/v1/payments/apple-pay/domains").permitAll()
+                        .requestMatchers("/api/v1/payments/apple-pay/domains/**").permitAll()
+                        .requestMatchers("/api/v1/payments/webhooks/stripe").permitAll()
                         // All other requests require authentication
                         .anyRequest().authenticated()
                 )

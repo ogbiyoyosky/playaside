@@ -9,6 +9,7 @@ import com.playvora.playvora_api.community.dtos.UpdateCommunityRequest;
 import com.playvora.playvora_api.community.entities.Community;
 import com.playvora.playvora_api.community.mappers.CommunityMapper;
 import com.playvora.playvora_api.community.services.ICommunityService;
+import com.playvora.playvora_api.user.dtos.UserResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -121,6 +122,14 @@ public class CommunityController {
             @Parameter(description = "Community ID") @PathVariable UUID id) {
         boolean isMember = communityService.isUserMember(id);
         return ResponseEntity.ok(ApiResponse.success(isMember, "Membership status retrieved"));
+    }
+
+    @GetMapping("/{id}/members")
+    @Operation(summary = "Get community members", description = "Get active members of a community")
+    public ResponseEntity<ApiResponse<List<UserResponse>>> getCommunityMembers(
+            @Parameter(description = "Community ID") @PathVariable UUID id) {
+        List<UserResponse> members = communityService.getCommunityMembers(id);
+        return ResponseEntity.ok(ApiResponse.success(members, "Community members retrieved successfully"));
     }
 
     @GetMapping("/my-communities")

@@ -30,7 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.LocalTime;
 import java.util.UUID;
 
@@ -52,8 +52,8 @@ public class VenueBookingService implements IVenueBookingService {
 
         User user = getCurrentUser();
 
-        LocalDateTime start = request.getStartTime();
-        LocalDateTime end = request.getEndTime();
+        OffsetDateTime start = request.getStartTime();
+        OffsetDateTime end = request.getEndTime();
 
         if (!end.isAfter(start)) {
             throw new BadRequestException("End time must be after start time");
@@ -166,7 +166,7 @@ public class VenueBookingService implements IVenueBookingService {
         return PaginationUtils.toPaginatedResponse(responsePage);
     }
 
-    private void validateWithinOpeningHours(Venue venue, LocalDateTime start, LocalDateTime end) {
+    private void validateWithinOpeningHours(Venue venue, OffsetDateTime start, OffsetDateTime end) {
         DayOfWeek dayOfWeek = start.getDayOfWeek();
         if (start.toLocalDate().isBefore(end.toLocalDate())) {
             throw new BadRequestException("Bookings must start and end on the same day");
@@ -194,7 +194,7 @@ public class VenueBookingService implements IVenueBookingService {
         }
     }
 
-    private void validateMaxDuration(Venue venue, LocalDateTime start, LocalDateTime end) {
+    private void validateMaxDuration(Venue venue, OffsetDateTime start, OffsetDateTime end) {
         Duration duration = Duration.between(start, end);
 
         if (venue.getRentType() == RentType.HOURLY) {
@@ -216,7 +216,7 @@ public class VenueBookingService implements IVenueBookingService {
         }
     }
 
-    private BigDecimal calculateTotalPrice(Venue venue, LocalDateTime start, LocalDateTime end) {
+    private BigDecimal calculateTotalPrice(Venue venue, OffsetDateTime start, OffsetDateTime end) {
         Duration duration = Duration.between(start, end);
 
         if (venue.getRentType() == RentType.HOURLY) {

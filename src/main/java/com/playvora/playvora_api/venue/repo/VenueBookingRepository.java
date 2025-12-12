@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public interface VenueBookingRepository extends JpaRepository<VenueBooking, UUID> {
@@ -25,8 +25,8 @@ public interface VenueBookingRepository extends JpaRepository<VenueBooking, UUID
     boolean existsOverlappingBooking(
             @Param("venueId") UUID venueId,
             @Param("status") VenueBookingStatus status,
-            @Param("startTime") LocalDateTime startTime,
-            @Param("endTime") LocalDateTime endTime
+            @Param("startTime") OffsetDateTime startTime,
+            @Param("endTime") OffsetDateTime endTime
     );
 }
 

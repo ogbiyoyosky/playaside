@@ -4,30 +4,21 @@ import com.playvora.playvora_api.app.AppUserDetail;
 import com.playvora.playvora_api.common.dto.ApiResponse;
 import com.playvora.playvora_api.common.dto.PaginatedResponse;
 import com.playvora.playvora_api.common.exception.BadRequestException;
-import com.playvora.playvora_api.common.utils.PaginationUtils;
 import com.playvora.playvora_api.match.dtos.AvailabilityRequest;
 import com.playvora.playvora_api.match.dtos.CreateMatchRequest;
 import com.playvora.playvora_api.match.dtos.MatchEventResponse;
 import com.playvora.playvora_api.match.dtos.JoinMatchRequest;
 import com.playvora.playvora_api.match.dtos.UpdateMatchRequest;
-import com.playvora.playvora_api.match.dtos.chat.ChatMessageResponse;
 import com.playvora.playvora_api.match.dtos.websocket.MatchUpdateMessage;
-import com.playvora.playvora_api.match.entities.ChatMessage;
 import com.playvora.playvora_api.match.entities.Match;
 import com.playvora.playvora_api.match.dtos.websocket.TeamSelectionMessage;
 import com.playvora.playvora_api.match.repo.AvailabilityRepository;
-import com.playvora.playvora_api.match.repo.ChatMessageRepository;
 import com.playvora.playvora_api.match.repo.MatchRepository;
 import com.playvora.playvora_api.match.repo.TeamRepository;
-import com.playvora.playvora_api.match.repo.MatchRegistrationRepository;
 import com.playvora.playvora_api.match.services.IMatchService;
 import com.playvora.playvora_api.match.mappers.MatchEventMapper;
 import com.playvora.playvora_api.user.entities.User;
 import com.playvora.playvora_api.user.repo.UserRepository;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,7 +31,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -56,8 +47,6 @@ public class MatchEventController {
     private final AvailabilityRepository availabilityRepository;
     private final TeamRepository teamRepository;
     private final MatchRepository matchRepository;
-    private final ChatMessageRepository chatMessageRepository;
-    private final MatchRegistrationRepository matchRegistrationRepository;
 
 
     @PostMapping
@@ -409,7 +398,7 @@ public class MatchEventController {
                     .matchTitle(match.getTitle())
                     .status(match.getStatus())
                     .message("Match has started!")
-                    .timestamp(LocalDateTime.now())
+                    .timestamp(OffsetDateTime.now())
                     .data(match)
                     .build();
             
@@ -444,7 +433,7 @@ public class MatchEventController {
                     .matchTitle(match.getTitle())
                     .status(match.getStatus())
                     .message("Match has been completed!")
-                    .timestamp(LocalDateTime.now())
+                    .timestamp(OffsetDateTime.now())
                     .data(match)
                     .build();
             
@@ -454,55 +443,6 @@ public class MatchEventController {
             log.error("Error completing match: {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Failed to complete match: " + e.getMessage()));
-        }
-    }
-
-    @GetMapping("/{matchId}/chat")
-    @Operation(summary = "Get chat history", description = "Get chat messages for a match event with pagination")
-    public ResponseEntity<ApiResponse<PaginatedResponse<ChatMessageResponse>>> getChatHistory(
-            @Parameter(description = "Match ID") @PathVariable UUID matchId,
-            @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Page size") @RequestParam(defaultValue = "50") int size) {
-        
-        try {
-            User currentUser = getCurrentUser();
-            
-            // Verify match exists
-            matchRepository.findById(matchId)
-                    .orElseThrow(() -> new BadRequestException("Match not found"));
-            
-            // Verify user is a participant in this match (has registered)
-            boolean isParticipant = matchRegistrationRepository.existsByMatchIdAndUserId(matchId, currentUser.getId());
-            if (!isParticipant) {
-                throw new BadRequestException("You must be a participant in this match to view chat messages");
-            }
-            
-            // Fetch chat messages with pagination (newest first)
-            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-            Page<ChatMessage> chatMessages = chatMessageRepository.findByMatchIdOrderByCreatedAtDesc(matchId, pageable);
-            
-            // Convert to response DTOs
-            Page<ChatMessageResponse> responsePage = chatMessages.map(chatMessage -> {
-                User sender = chatMessage.getSender();
-                return ChatMessageResponse.builder()
-                        .id(chatMessage.getId())
-                        .matchId(matchId)
-                        .senderId(sender.getId())
-                        .senderName(sender.getFirstName() + " " + sender.getLastName())
-                        .senderFirstName(sender.getFirstName())
-                        .senderLastName(sender.getLastName())
-                        .message(chatMessage.getMessage())
-                        .createdAt(chatMessage.getCreatedAt())
-                        .build();
-            });
-            
-            PaginatedResponse<ChatMessageResponse> paginatedResponse = PaginationUtils.toPaginatedResponse(responsePage);
-            return ResponseEntity.ok(ApiResponse.success(paginatedResponse, "Chat history retrieved successfully"));
-            
-        } catch (Exception e) {
-            log.error("Error fetching chat history: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Failed to fetch chat history: " + e.getMessage()));
         }
     }
 

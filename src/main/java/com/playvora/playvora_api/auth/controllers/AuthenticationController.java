@@ -10,6 +10,7 @@ import com.playvora.playvora_api.auth.services.IAuthenticationService;
 import com.playvora.playvora_api.auth.services.IPasswordResetService;
 import com.playvora.playvora_api.common.dto.ApiResponse;
 import com.playvora.playvora_api.common.exception.BadRequestException;
+import com.playvora.playvora_api.component.RedirectUriValidator;
 
 import java.io.IOException;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,16 +29,24 @@ import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping(path ="/api/v1/auth")
 @RequiredArgsConstructor
 @Tag(name = "Authentication", description = "Authentication management APIs")
+@Slf4j
 public class AuthenticationController {
     private final IAuthenticationService authenticationService;
     private final IPasswordResetService passwordResetService;
+
+    private final RedirectUriValidator redirectUriValidator;
+
+    private static final String REDIRECT_URI_COOKIE_NAME = "redirect_uri";
 
     @PostMapping(path = "/login")
     @Operation(summary = "User login", description = "Authenticate user and return JWT token")
@@ -107,12 +116,37 @@ public class AuthenticationController {
         response.addCookie(cookie);
     }
 
+    private void addRedirectUriCookie(HttpServletResponse response, String redirectUri, int maxAgeSeconds) {
+        Cookie cookie = new Cookie(REDIRECT_URI_COOKIE_NAME, redirectUri);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(maxAgeSeconds);
+        // Lax is required so the cookie is sent on the OAuth provider redirect back to our domain
+        cookie.setAttribute("SameSite", "Lax");
+        response.addCookie(cookie);
+    }
+
     @GetMapping("/authorize/{provider}")
     @Operation(summary = "OAuth2 Authorization Request",
             description = "Redirects to the specified OAuth2 provider login page.")
-    public void redirectToOAuth2(@PathVariable String provider, HttpServletResponse response) throws IOException {
+    public void redirectToOAuth2(
+            @PathVariable String provider,
+            @RequestParam(name = "redirect_uri", required = false) String redirectUri,
+            HttpServletResponse response) throws IOException {
+
+        String targetUrl = redirectUri;
+        if (targetUrl != null && !targetUrl.isBlank()) {
+            if (!redirectUriValidator.isAuthorizedRedirectUri(targetUrl)) {
+                throw new BadRequestException("Unauthorized redirect URI");
+            }
+            // Store redirect URI in a short-lived, HTTP-only cookie for retrieval after OAuth callback
+            addRedirectUriCookie(response, targetUrl, 180);
+        }
+
         // Spring Security OAuth2 expects lowercase provider names
-        response.sendRedirect("/oauth2/authorization/" + provider);
+        String normalizedProvider = provider.toLowerCase();
+        response.sendRedirect("/oauth2/authorization/" + normalizedProvider);
     }
 
     @PostMapping(path = "/refresh")

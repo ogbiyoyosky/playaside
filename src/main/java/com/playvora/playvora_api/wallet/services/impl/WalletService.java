@@ -2,6 +2,7 @@ package com.playvora.playvora_api.wallet.services.impl;
 
 import com.playvora.playvora_api.common.exception.BadRequestException;
 import com.playvora.playvora_api.common.utils.CurrencyMapper;
+import com.playvora.playvora_api.payment.services.ITransactionService;
 import com.playvora.playvora_api.user.entities.User;
 import com.playvora.playvora_api.wallet.entities.Wallet;
 import com.playvora.playvora_api.wallet.repo.WalletRepository;
@@ -19,6 +20,7 @@ import java.math.BigDecimal;
 public class WalletService implements IWalletService {
 
     private final WalletRepository walletRepository;
+    private final ITransactionService transactionService;
 
     @Override
     @Transactional
@@ -73,7 +75,19 @@ public class WalletService implements IWalletService {
         log.info("Topped up wallet {} for user {} by {}. New balance: {}",
                 wallet.getId(), user.getId(), amount, wallet.getBalance());
 
-        return walletRepository.save(wallet);
+        Wallet saved = walletRepository.save(wallet);
+
+        // Record transaction for this top-up
+        transactionService.recordWalletTopup(
+                user,
+                saved,
+                amount,
+                saved.getCurrency(),
+                "Wallet top-up",
+                null
+        );
+
+        return saved;
     }
 }
 
